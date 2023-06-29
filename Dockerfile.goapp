@@ -7,8 +7,7 @@ RUN go build -o app
 
 # Actual runtime image
 # TODO: Currently referring to the locally built image, need to setup pushing to registry and then using base from there
-ARG BASE_IMAGE=secure-image-base
-FROM ${BASE_IMAGE}:local
+FROM secure-image-base:local
 COPY --from=builder /app /app/app
 EXPOSE 8080
 ENTRYPOINT /app/app

@@ -41,7 +41,6 @@ jobs:
           tags: secure-image-golang:local
           build-args: |
             ALPINE_VERSION: 3.18
-            BASE_IMAGE: secure-image-base
             
 
       
