@@ -31,8 +31,8 @@ jobs:
         with:
           context: .
           file: Dockerfile.base
+          pull: true
           push: true
-          load: true
           tags: |
             ghcr.io/fivexl/secure-container-image-base:latest
             ghcr.io/fivexl/secure-container-image-base:${{ github.sha }}
@@ -49,7 +49,6 @@ jobs:
           context: .
           file: Dockerfile.goapp
           push: true
-          load: true
           tags: |
             ghcr.io/fivexl/secure-container-image-goapp:latest
             ghcr.io/fivexl/secure-container-image-goapp:${{ github.sha }}
