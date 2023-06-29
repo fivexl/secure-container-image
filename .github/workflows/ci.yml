@@ -27,7 +27,7 @@ jobs:
           push: false
           load: true
           tags: secure-image-base:local
-          build-args:
+          build-args: |
             ALPINE_VERSION: 3.18
 
       - name: Build Docker image goapp
@@ -39,7 +39,7 @@ jobs:
           push: false
           load: true
           tags: secure-image-golang:local
-          build-args:
+          build-args: |
             ALPINE_VERSION: 3.18
             BASE_IMAGE: secure-image-base
             
