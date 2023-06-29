@@ -1,4 +1,4 @@
-ARG ALPINE_VERSION=latest
+ARG ALPINE_VERSION=3.18
 
 ### LOADER IMAGE ###
 FROM public.ecr.aws/docker/library/alpine:${ALPINE_VERSION} as loader
@@ -10,7 +10,7 @@ WORKDIR /loader
 RUN apk upgrade --no-cache
 
 # Install required base software
-RUN apk --no-cache add build-base=~0.5 dumb-init=~1 git=~2 wget=~1 tzdata=~2023c-r0 ca-certificates=~20230506 && update-ca-certificates && rm -rf /var/cache/apk/* /tmp/*
+RUN apk --no-cache add build-base=~0.5 dumb-init=~1 git=~2 wget=~1 tzdata=~2023c ca-certificates=~20230506 && update-ca-certificates && rm -rf /var/cache/apk/* /tmp/*
 
 # add a user here because addgroup and adduser are not available in scratch
 ENV APP_USER_NAME=app
