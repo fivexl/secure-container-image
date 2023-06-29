@@ -14,8 +14,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
     - name: Build the Docker image
       run: | 
-        docker build . --file Dockerfile.base --tag secure-image-base
-        docker build . --file Dockerfile.goapp --tag secure-image-golang-app
+        docker buildx build --platform=linux/amd64 . --file Dockerfile.base --tag secure-image-base
+        docker buildx build --platform=linux/amd64 . --file Dockerfile.goapp --tag secure-image-golang-app
       
