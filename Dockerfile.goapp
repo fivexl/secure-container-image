@@ -7,7 +7,7 @@ RUN go build -o app
 
 # Actual runtime image
 # TODO: Currently referring to the locally built image, need to setup pushing to registry and then using base from there
-FROM secure-image-base:local
+FROM ghcr.io/fivexl/secure-container-image:base
 COPY --from=builder /app /app/app
 EXPOSE 8080
 ENTRYPOINT /app/app
