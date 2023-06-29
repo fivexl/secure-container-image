@@ -31,11 +31,11 @@ jobs:
         with:
           context: .
           file: Dockerfile.base
-          push: false
+          push: true
           load: true
           tags: |
-            ghcr.io/fivexl/secure-container-image:base
-            ghcr.io/fivexl/secure-container-image:base-${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-base:latest
+            ghcr.io/fivexl/secure-container-image-base:${{ github.sha }}
           build-args: |
             ALPINE_VERSION: 3.18
 
@@ -48,13 +48,14 @@ jobs:
         with:
           context: .
           file: Dockerfile.goapp
-          push: false
+          push: true
           load: true
           tags: |
-            ghcr.io/fivexl/secure-container-image:goapp
-            ghcr.io/fivexl/secure-container-image:goapp-${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-goapp:latest
+            ghcr.io/fivexl/secure-container-image-goapp:${{ github.sha }}
           build-args: |
             ALPINE_VERSION: 3.18
+            BASE_IMAGE_VERSION: ${{ github.sha }}
             
 
       
