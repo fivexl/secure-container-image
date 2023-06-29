@@ -33,14 +33,7 @@ RUN wget --quiet https://truststore.pki.rds.amazonaws.com/global/global-bundle.p
 
 # Health Check Tool
 ## lProbe check tool: https://github.com/fivexl/lprobe
-ARG LPROBE_VERSION=v0.0.7
-ARG TARGETPLATFORM
-RUN case ${TARGETPLATFORM} in \
-         "linux/amd64")  LPROBE_ARCH=amd64  ;; \
-         "linux/arm64")  LPROBE_ARCH=arm64  ;; \
-    esac \
- && wget -qO/loader/lprobe https://github.com/fivexl/lprobe/releases/download/${LPROBE_VERSION}/lprobe-linux-${LPROBE_ARCH} \
- && chmod +x /loader/lprobe
+COPY --from=ghcr.io/fivexl/lprobe:0.0.7 /lprobe lprobe
 
 USER app
 RUN mkdir -m 0700 /tmp/tmp

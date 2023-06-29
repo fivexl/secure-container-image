@@ -13,12 +13,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    - name: Build the Docker image
-      run: | 
-        docker buildx build --platform=linux/amd64 --file Dockerfile.base --tag secure-image-base:local .
-        # Using pull=false here to use image built during the step above
-        docker buildx build --platform=linux/amd64 --file Dockerfile.goapp --tag secure-image-golang-app --pull=false .
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx (buildkit) runner
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image Base
+        id: docker_build_base
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.base
+          push: false
+          load: true
+          tags: secure-image-base:local
+          build-args:
+            ALPINE_VERSION: 3.18
+
+      - name: Build Docker image goapp
+        id: docker_build_goapp
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.goapp
+          push: false
+          load: true
+          tags: secure-image-golang:local
+          build-args:
+            ALPINE_VERSION: 3.18
+            BASE_IMAGE: secure-image-base
+            
+
       
