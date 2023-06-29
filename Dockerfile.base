@@ -1,0 +1,65 @@
+ARG ALPINE_VERSION=latest
+
+### LOADER IMAGE ###
+FROM public.ecr.aws/docker/library/alpine:${ALPINE_VERSION} as loader
+WORKDIR /loader
+
+# Get lastest updates for pre-installed packages
+# to deal with potential CVEs
+# hadolint ignore=DL3017
+RUN apk upgrade --no-cache
+
+# Install required base software
+RUN apk --no-cache add build-base=~0.5 dumb-init=~1 git=~2 wget=~1 tzdata=~2023c-r0 ca-certificates=~20230506 && update-ca-certificates && rm -rf /var/cache/apk/* /tmp/*
+
+# add a user here because addgroup and adduser are not available in scratch
+ENV APP_USER_NAME=app
+ENV APP_USER_ID=2323
+ENV APP_USER_HOME=/app
+
+## Create app user/group/home
+RUN addgroup --gid ${APP_USER_ID} ${APP_USER_NAME} \
+    && adduser --home ${APP_USER_HOME} --disabled-password --uid ${APP_USER_ID} --ingroup ${APP_USER_NAME} ${APP_USER_NAME} \
+    && cp /etc/group /loader/group && cp /etc/passwd /loader/passwd 
+
+## Remove unnecessary accounts, excluding current app user and root
+RUN sed -i -r "/^($APP_USER_NAME|root|nobody)/!d" /loader/group \
+  && sed -i -r "/^($APP_USER_NAME|root|nobody)/!d" /loader/passwd 
+
+# TLS/SSL
+## https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html
+RUN wget --quiet https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -O /etc/ssl/certs/aws-rds.crt \
+   && cat /etc/ssl/certs/aws-rds.crt >> /etc/ssl/certs/ca-certificates.crt
+
+# Health Check Tool
+## lProbe check tool: https://github.com/fivexl/lprobe
+ARG LPROBE_VERSION=v0.0.7
+ARG TARGETPLATFORM
+RUN case ${TARGETPLATFORM} in \
+         "linux/amd64")  LPROBE_ARCH=amd64  ;; \
+         "linux/arm64")  LPROBE_ARCH=arm64  ;; \
+    esac \
+ && wget -qO/loader/lprobe https://github.com/fivexl/lprobe/releases/download/${LPROBE_VERSION}/lprobe-linux-${LPROBE_ARCH} \
+ && chmod +x /loader/lprobe
+
+USER app
+RUN mkdir -m 0700 /tmp/tmp
+### RUN IMAGE ###
+FROM scratch
+
+# Copy files
+COPY --from=loader /loader/group /etc/group 
+COPY --from=loader /loader/passwd /etc/passwd 
+COPY --from=loader /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=loader /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=loader /etc/os-release /etc/os-release
+COPY --from=loader /loader/lprobe /usr/bin/lprobe
+COPY --from=loader --chown=app:app --chmod=0700 /tmp/tmp /app/tmp
+
+# Set ENV
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV TMPDIR="/app/tmp/"
+ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+
+USER app
+WORKDIR /app
