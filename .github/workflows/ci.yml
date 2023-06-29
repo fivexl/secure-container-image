@@ -25,6 +25,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.base
+
       - name: Build Docker image Base
         id: docker_build_base
         uses: docker/build-push-action@v3
@@ -39,8 +43,9 @@ jobs:
           build-args: |
             ALPINE_VERSION: 3.18
 
-      - name: Check docker images
-        run: docker images
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.goapp
 
       - name: Build Docker image goapp
         id: docker_build_goapp
