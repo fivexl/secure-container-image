@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "docker"
+version = "0.1.0"
+description = ""
+authors = ["Anton Eremin <mobessona2@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.9.2"
+uvicorn = "^0.23.2"
+pandas = "^2.0.3"
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
