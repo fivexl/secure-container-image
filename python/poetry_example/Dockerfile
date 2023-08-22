@@ -17,8 +17,12 @@ COPY pyproject.toml poetry.lock /
 
 # Set up the virtualenv and install dependencies
 RUN poetry config virtualenvs.create true && \
-    poetry config virtualenvs.in-project true && \
-    poetry install
+  poetry config virtualenvs.in-project true && \
+  # Disable pip and setuptools installs in the virtualenv
+  poetry config virtualenvs.options.no-pip true && \
+  poetry config virtualenvs.options.no-setuptools true && \
+  # Install dependencies
+  poetry install
 
 # Copy the rest of the project over and build the app
 FROM gcr.io/distroless/python3-debian11 AS runtime
