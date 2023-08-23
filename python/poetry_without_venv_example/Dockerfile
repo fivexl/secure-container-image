@@ -1,11 +1,9 @@
-# Build using the appropriate Debian release
-# * Install necessary dependencies to compile C Python modules
-# * Use poetry for dependency management
 
-# poetry config virtualenvs.options.no-pip true && \
-# poetry config virtualenvs.options.no-setuptools true && \
+ARG DEBIAN_SLIM_TAG=11.7-slim
+ARG DISTROLESS_TAG=@sha256:69ae7f133d33faab720af28e78fb45707b623bcbc94ae02a07c633bf053f4b40
 
-FROM debian:11.7-slim AS build
+
+FROM debian:${DEBIAN_SLIM_TAG} AS build
 ARG POETRY_VERSION=1.6.1
 ARG LIBPYTHON3_VERSION=3.9.2-3
 ARG GCC_VERSION=4:10.2.1-1
@@ -24,7 +22,7 @@ RUN poetry config virtualenvs.create false && \
   poetry config virtualenvs.in-project false && \
   poetry install 
 
-FROM gcr.io/distroless/python3-debian11:latest AS runtime
+FROM gcr.io/distroless/python3-debian11${DISTROLESS_TAG} AS runtime
 
 # Set the PYTHONPATH to the deps directory
 ENV PYTHONPATH="/usr/bin/deps"

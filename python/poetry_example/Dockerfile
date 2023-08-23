@@ -1,12 +1,10 @@
-# Build a virtualenv using the appropriate Debian release
-# * Install necessary dependencies to compile C Python modules
-# * Use poetry for virtual environment creation and management
+ARG DEBIAN_SLIM_TAG=11.7-slim
+ARG DISTROLESS_TAG=@sha256:69ae7f133d33faab720af28e78fb45707b623bcbc94ae02a07c633bf053f4b40
 
-FROM debian:11.7-slim AS build
+FROM debian:${DEBIAN_SLIM_TAG} AS build
 ARG POETRY_VERSION=1.6.1
 ARG LIBPYTHON3_VERSION=3.9.2-3
 ARG GCC_VERSION=4:10.2.1-1
-
 
 RUN apt-get update && \
   apt-get install --no-install-suggests --no-install-recommends --yes python3 python3-pip gcc=${GCC_VERSION} libpython3-dev=${LIBPYTHON3_VERSION} && \
@@ -27,7 +25,8 @@ RUN poetry config virtualenvs.create true && \
   poetry install
 
 # Copy the rest of the project over and build the app
-FROM gcr.io/distroless/python3-debian11:latest AS runtime
+FROM gcr.io/distroless/python3-debian11${DISTROLESS_TAG} AS runtime
+
 COPY --from=build /.venv /.venv
 WORKDIR /app
 COPY ./app ./app
