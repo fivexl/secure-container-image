@@ -71,7 +71,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./python/poetry_example
-          file: Dockerfile
+          file: ./python/poetry_example/Dockerfile
           push: true
           tags: |
             ghcr.io/fivexl/secure-container-image-poetry_example:latest
@@ -87,7 +87,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./python/poetry_without_venv_example
-          file: Dockerfile
+          file: ./python/poetry_without_venv_example/Dockerfile
           push: true
           tags: |
             ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:latest
