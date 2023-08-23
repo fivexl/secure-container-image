@@ -7,10 +7,11 @@
 
 FROM debian:11-slim AS build
 ARG POETRY_VERSION=1.6.1
+ARG LIBPYTHON3_VERSION=3.9.2-3
+ARG GCC_VERSION=4:10.2.1-1
 
-# Update and install dependencies
 RUN apt-get update && \
-  apt-get install --no-install-suggests --no-install-recommends --yes python3 python3-pip gcc libpython3-dev && \
+  apt-get install --no-install-suggests --no-install-recommends --yes python3 python3-pip gcc=${GCC_VERSION} libpython3-dev=${LIBPYTHON3_VERSION} && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \
   pip install "poetry==${POETRY_VERSION}"
