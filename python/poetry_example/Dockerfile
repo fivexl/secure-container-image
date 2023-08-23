@@ -12,7 +12,7 @@ RUN apt-get update && \
   apt-get install --no-install-suggests --no-install-recommends --yes python3 python3-pip gcc=${GCC_VERSION} libpython3-dev=${LIBPYTHON3_VERSION} && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \
-  pip install "poetry==${POETRY_VERSION}"
+  pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 # Copy just the pyproject.toml and poetry.lock files to install dependencies
 COPY pyproject.toml poetry.lock /
