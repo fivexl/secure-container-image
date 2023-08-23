@@ -60,6 +60,79 @@ jobs:
           build-args: |
             ALPINE_VERSION: 3.18
             BASE_IMAGE_VERSION: ${{ github.sha }}
+
+      # Build poetry_example Python image
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: python/poetry_example/Dockerfile
+
+      - name: Build Docker image poetry_example
+        id: docker_build_poetry_example
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: python/poetry_example/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/fivexl/secure-container-image-poetry_example:latest
+            ghcr.io/fivexl/secure-container-image-poetry_example:${{ github.sha }}
+
+      # Build poetry_without_venv_example Python image
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: python/poetry_without_venv_example/Dockerfile
+
+      - name: Build Docker image poetry_without_venv_example
+        id: docker_build_poetry_without_venv_example
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: python/poetry_without_venv_example/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:latest
+            ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:${{ github.sha }}
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: node/Dockerfile
+
+      - name: Build Docker image node
+        id: docker_build_node
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: node/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/fivexl/secure-container-image-node:latest
+            ghcr.io/fivexl/secure-container-image-node:${{ github.sha }}
+
+  # Run Snyk to check Docker image for vulnerabilities
+  snyk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: 
+          - ghcr.io/fivexl/secure-container-image-goapp:${{ github.sha }}
+          - ghcr.io/fivexl/secure-container-image-poetry_example:${{ github.sha }}
+          - ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:${{ github.sha }}
+          - ghcr.io/fivexl/secure-container-image-node:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Snyk to check Docker image for vulnerabilities
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ matrix.image }}
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
+            
+
             
 
       
