@@ -23,6 +23,9 @@ RUN poetry config virtualenvs.create false && \
   poetry config virtualenvs.in-project false && \
   poetry install 
 
+# Copy the rest of the project over and build the app
+# Using digest for immutability
+# hadolint ignore=DL3006
 FROM gcr.io/distroless/python3-debian11${DISTROLESS_TAG} AS runtime
 
 # Set the PYTHONPATH to the deps directory
