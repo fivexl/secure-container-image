@@ -5,7 +5,7 @@
 # poetry config virtualenvs.options.no-pip true && \
 # poetry config virtualenvs.options.no-setuptools true && \
 
-FROM debian:11-slim AS build
+FROM debian:11.7-slim AS build
 ARG POETRY_VERSION=1.6.1
 ARG LIBPYTHON3_VERSION=3.9.2-3
 ARG GCC_VERSION=4:10.2.1-1
@@ -24,7 +24,7 @@ RUN poetry config virtualenvs.create false && \
   poetry config virtualenvs.in-project false && \
   poetry install 
 
-FROM gcr.io/distroless/python3-debian11 AS runtime
+FROM gcr.io/distroless/python3-debian11:latest AS runtime
 
 # Set the PYTHONPATH to the deps directory
 ENV PYTHONPATH="/usr/bin/deps"
