@@ -101,8 +101,8 @@ jobs:
         id: docker_build_node
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: node/Dockerfile
+          context: ./node
+          file: ./node/Dockerfile
           push: true
           tags: |
             ghcr.io/fivexl/secure-container-image-node:latest
