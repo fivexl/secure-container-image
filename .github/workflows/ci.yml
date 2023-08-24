@@ -111,13 +111,6 @@ jobs:
   # Run Snyk to check Docker image for vulnerabilities
   snyk:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image: 
-          - ghcr.io/fivexl/secure-container-image-goapp:${{ github.sha }}
-          - ghcr.io/fivexl/secure-container-image-poetry_example:${{ github.sha }}
-          - ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:${{ github.sha }}
-          - ghcr.io/fivexl/secure-container-image-node:${{ github.sha }}
     steps:
       - uses: actions/checkout@v2
       - name: Run Snyk to check Docker image for vulnerabilities
@@ -126,7 +119,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          image: ${{ matrix.image }}
+          image: ghcr.io/fivexl/secure-container-image-poetry_example:${{ github.sha }}
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
         with:
