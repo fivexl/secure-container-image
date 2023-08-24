@@ -9,6 +9,8 @@ ARG GCC_VERSION=4:10.2.1-1
 ARG PYTHON3_VERSION=3.9.2-3
 ARG PYTHON3_PIP_VERSION=20.3.4-4+deb11u1
 
+WORKDIR /
+
 RUN apt-get update && \
   apt-get install --no-install-suggests --no-install-recommends --yes python3=${PYTHON3_VERSION} python3-pip=${PYTHON3_PIP_VERSION} gcc=${GCC_VERSION} libpython3-dev=${LIBPYTHON3_VERSION} && \
   apt-get clean && \
