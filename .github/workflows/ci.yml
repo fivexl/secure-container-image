@@ -61,6 +61,23 @@ jobs:
             ALPINE_VERSION: 3.18
             BASE_IMAGE_VERSION: ${{ github.sha }}
 
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.distroless
+      
+      - name: Build base distroless image
+        id: docker_build_distroless
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.distroless
+          push: true
+          tags: |
+            ghcr.io/fivexl/secure-container-image-base-distroless:latest
+            ghcr.io/fivexl/secure-container-image-base-distroless:${{ github.sha }}
+          build-args: |
+            BASE_IMAGE_VERSION: ${{ github.sha }}
+
       # Build poetry_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
