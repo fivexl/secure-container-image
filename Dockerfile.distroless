@@ -1,0 +1,59 @@
+# Arguments
+ARG DEBIAN_VERSION=12
+ARG DISTROLESS_VERSION=nonroot
+
+### LOADER IMAGE ###
+FROM debian:${DEBIAN_VERSION} as loader
+WORKDIR /loader
+
+# Update and install required base software
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install --no-install-recommends -y build-essential dumb-init wget tzdata ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# User setup
+ENV APP_USER_NAME=app
+ENV APP_USER_ID=2323
+ENV APP_USER_HOME=/app
+
+# Create app user/group/home
+RUN groupadd -g ${APP_USER_ID} ${APP_USER_NAME} \
+    && useradd -l -m -d ${APP_USER_HOME} -u ${APP_USER_ID} -g ${APP_USER_NAME} ${APP_USER_NAME} \
+    && cp /etc/group /loader/group && cp /etc/passwd /loader/passwd 
+
+# Remove unnecessary accounts, excluding current app user and root
+RUN sed -i -r "/^($APP_USER_NAME|root|nobody)/!d" /loader/group \
+    && sed -i -r "/^($APP_USER_NAME|root|nobody)/!d" /loader/passwd 
+
+# TLS/SSL for AWS RDS
+RUN wget --quiet https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -O /etc/ssl/certs/aws-rds.crt \
+    && cat /etc/ssl/certs/aws-rds.crt >> /etc/ssl/certs/ca-certificates.crt
+
+# Health Check Tool
+COPY --from=ghcr.io/fivexl/lprobe:0.0.8 /lprobe lprobe
+
+USER app
+RUN mkdir -m 0700 /tmp/tmp
+
+### RUN IMAGE ###
+FROM gcr.io/distroless/python3-debian11:${DISTROLESS_VERSION}
+
+# Copy necessary files from loader
+COPY --from=loader /loader/group /etc/group 
+COPY --from=loader /loader/passwd /etc/passwd 
+COPY --from=loader /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=loader /etc/os-release /etc/os-release
+COPY --from=loader /loader/lprobe /usr/bin/lprobe
+COPY --from=loader --chown=app:app --chmod=0700 /tmp/tmp /app/tmp
+
+# Set ENV
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV TMPDIR="/app/tmp/"
+ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+
+HEALTHCHECK --interval=1m --timeout=3s \
+    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
+
+USER app
+WORKDIR /app
