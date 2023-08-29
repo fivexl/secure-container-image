@@ -1,7 +1,6 @@
-ARG DEBIAN_SLIM_TAG=11.7-slim
-ARG DISTROLESS_TAG=@sha256:69ae7f133d33faab720af28e78fb45707b623bcbc94ae02a07c633bf053f4b40
+ARG DEBIAN_VERSION=11
 
-FROM debian:${DEBIAN_SLIM_TAG} AS build
+FROM debian:${DEBIAN_VERSION} AS build
 
 ARG POETRY_VERSION=1.6.1
 ARG LIBPYTHON3_VERSION=3.9.2-3
@@ -16,7 +15,7 @@ RUN apt-get update && \
   pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 # Copy just the pyproject.toml and poetry.lock files to install dependencies
-COPY pyproject.toml poetry.lock /
+COPY ./py_src/pyproject.toml ./py_src/poetry.lock /
 
 # Set up the virtualenv and install dependencies
 RUN poetry config virtualenvs.create true && \
@@ -27,16 +26,13 @@ RUN poetry config virtualenvs.create true && \
   # Install dependencies
   poetry install
 
-
 # Copy the rest of the project over and build the app
-# Using digest for immutability
-# hadolint ignore=DL3006
-FROM gcr.io/distroless/python3-debian11${DISTROLESS_TAG} AS runtime
+# hadolint ignore=DL3007
+FROM ghcr.io/fivexl/secure-container-image-base-distroless:latest AS runtime
 
 COPY --from=build /.venv /.venv
 WORKDIR /app
-COPY ./app ./app
+COPY ./py_src ./app
 EXPOSE 80
 
 ENTRYPOINT ["/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
-
