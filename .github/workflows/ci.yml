@@ -81,34 +81,34 @@ jobs:
       # Build poetry_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: python/poetry_example/Dockerfile
+          dockerfile: Dockerfile.py_app_poetry
 
       - name: Build Docker image poetry_example
         id: docker_build_poetry_example
         uses: docker/build-push-action@v3
         with:
-          context: ./python/poetry_example
-          file: ./python/poetry_example/Dockerfile
+          context: .
+          file: Dockerfile.py_app_poetry
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-poetry_example:latest
-            ghcr.io/fivexl/secure-container-image-poetry_example:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-py_app_poetry:latest
+            ghcr.io/fivexl/secure-container-image-py_app_poetry:${{ github.sha }}
 
       # Build poetry_without_venv_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: python/poetry_without_venv_example/Dockerfile
+          dockerfile: Dockerfile.py_app_poetry_no_venv
 
       - name: Build Docker image poetry_without_venv_example
         id: docker_build_poetry_without_venv_example
         uses: docker/build-push-action@v3
         with:
-          context: ./python/poetry_without_venv_example
-          file: ./python/poetry_without_venv_example/Dockerfile
+          context: .
+          file: Dockerfile.py_app_poetry_no_venv
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:latest
-            ghcr.io/fivexl/secure-container-image-poetry_without_venv_example:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-py_app_poetry_no_venv:latest
+            ghcr.io/fivexl/secure-container-image-py_app_poetry_no_venv:${{ github.sha }}
 
       - uses: hadolint/hadolint-action@v3.1.0
         with:
