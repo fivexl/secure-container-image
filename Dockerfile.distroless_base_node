@@ -11,6 +11,11 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y build-essential dumb-init wget tzdata ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Get the latest updates for pre-installed packages
+# to deal with potential CVEs
+# hadolint ignore=DL3009
+RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # TLS/SSL for AWS RDS
 RUN wget --quiet https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -O /etc/ssl/certs/aws-rds.crt \
     && cat /etc/ssl/certs/aws-rds.crt >> /etc/ssl/certs/ca-certificates.crt

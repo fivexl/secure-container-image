@@ -9,6 +9,8 @@ COPY ./node_src/package*.json ./
 # Install the Node.js dependencies
 RUN npm install
 
+# Copy the rest of the project over and build the app
+# hadolint ignore=DL3007
 FROM ghcr.io/fivexl/secure-container-image-distroless_base_node:latest AS runtime
 
 # Copy over the deps

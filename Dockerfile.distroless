@@ -12,6 +12,11 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y build-essential dumb-init wget tzdata ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Get the latest updates for pre-installed packages
+# to deal with potential CVEs
+# hadolint ignore=DL3009
+RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # User setup
 ENV APP_USER_NAME=app
 ENV APP_USER_ID=2323
