@@ -78,6 +78,21 @@ jobs:
           build-args: |
             BASE_IMAGE_VERSION: ${{ github.sha }}
 
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.distroless_base_node
+
+      - name: Build Docker image node
+        id: docker_build_base_node_image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile.distroless_base_node
+          push: true
+          tags: |
+            ghcr.io/fivexl/secure-container-image-distroless_base_node:latest
+            ghcr.io/fivexl/secure-container-image-distroless_base_node:${{ github.sha }}
+
       # Build poetry_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
@@ -110,20 +125,21 @@ jobs:
             ghcr.io/fivexl/secure-container-image-py_app_poetry_no_venv:latest
             ghcr.io/fivexl/secure-container-image-py_app_poetry_no_venv:${{ github.sha }}
 
+      # Build example node image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: node/Dockerfile
-
-      - name: Build Docker image node
-        id: docker_build_node
+          dockerfile: Dockerfile.node_app
+        
+      - name: Build Docker image node_app
+        id: docker_build_node_app
         uses: docker/build-push-action@v3
         with:
-          context: ./node
-          file: ./node/Dockerfile
+          context: .
+          file: Dockerfile.node_app
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-node:latest
-            ghcr.io/fivexl/secure-container-image-node:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-node_app:latest
+            ghcr.io/fivexl/secure-container-image-node_app:${{ github.sha }}
 
   # Run Snyk to check Docker image for vulnerabilities
   snyk:
