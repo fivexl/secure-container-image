@@ -65,8 +65,8 @@ jobs:
         with:
           dockerfile: Dockerfile.python3-distroless-debian-11
       
-      - name: Build base distroless image
-        id: docker_build_distroless
+      - name: Build base python3 distroless image
+        id: docker_build_base_python3_distroless_image
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -82,8 +82,8 @@ jobs:
         with:
           dockerfile: Dockerfile.nodejs20-distroless-debian-11
 
-      - name: Build Docker image node
-        id: docker_build_base_node_image
+      - name: Build base nodejs20 distroless image
+        id: docker_build_base_nodejs20_distroless_image
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -96,50 +96,50 @@ jobs:
       # Build poetry_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.py_app_poetry
+          dockerfile: Dockerfile.py-app-poetry
 
-      - name: Build Docker image poetry_example
+      - name: Build Docker image py-app-poetry
         id: docker_build_poetry_example
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: Dockerfile.py_app_poetry
+          file: Dockerfile.py-app-poetry
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-py_app_poetry:latest
-            ghcr.io/fivexl/secure-container-image-py_app_poetry:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-py-app-poetry:latest
+            ghcr.io/fivexl/secure-container-image-py-app-poetry:${{ github.sha }}
 
       # Build poetry_without_venv_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.py_app_poetry_no_venv
+          dockerfile: Dockerfile.py-app-poetry-no-venv
 
-      - name: Build Docker image poetry_without_venv_example
+      - name: Build Docker image py-app-poetry-no-venv
         id: docker_build_poetry_without_venv_example
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: Dockerfile.py_app_poetry_no_venv
+          file: Dockerfile.py-app-poetry-no-venv
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-py_app_poetry_no_venv:latest
-            ghcr.io/fivexl/secure-container-image-py_app_poetry_no_venv:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-py-app-poetry-no-venv:latest
+            ghcr.io/fivexl/secure-container-image-py-app-poetry-no-venv:${{ github.sha }}
 
       # Build example node image
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.node_app
+          dockerfile: Dockerfile.node-app
         
-      - name: Build Docker image node_app
+      - name: Build Docker image node-app
         id: docker_build_node_app
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: Dockerfile.node_app
+          file: Dockerfile.node-app
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-node_app:latest
-            ghcr.io/fivexl/secure-container-image-node_app:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-node-app:latest
+            ghcr.io/fivexl/secure-container-image-node-app:${{ github.sha }}
 
   # Run Snyk to check Docker image for vulnerabilities
   snyk:

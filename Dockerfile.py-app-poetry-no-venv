@@ -17,22 +17,29 @@ RUN apt-get update && \
 # Copy just the pyproject.toml and poetry.lock files to install dependencies
 COPY ./py_src/pyproject.toml ./py_src/poetry.lock /
 
-# Set up the virtualenv and install dependencies
-RUN poetry config virtualenvs.create true && \
-  poetry config virtualenvs.in-project true && \
-  # Disable pip and setuptools installs in the virtualenv
-  poetry config virtualenvs.options.no-pip true && \
-  poetry config virtualenvs.options.no-setuptools true && \
-  # Install dependencies
-  poetry install
+# Disable the creation of virtual environments and install app dependencies
+RUN poetry config virtualenvs.create false && \
+  poetry config virtualenvs.in-project false && \
+  poetry install 
 
 # Copy the rest of the project over and build the app
 # hadolint ignore=DL3007
-FROM ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:latest AS runtime
+FROM ghcr.io/fivexl/secure-container-image-python3-distroless-debian-11:latest AS runtime
 
-COPY --from=build /.venv /.venv
+# Set the PYTHONPATH to the deps directory
+ENV PYTHONPATH="/usr/bin/deps"
+
+# Copy dependencies from the build stage
+COPY --from=build /usr/lib/python3.9/site-packages/ /usr/bin/deps/
+
+# Copy uvicorn executable from the build stage
+COPY --from=build /usr/bin/uvicorn /usr/bin/uvicorn
+
 WORKDIR /app
+# Copy the rest of the project over
 COPY ./py_src ./app
+
 EXPOSE 80
 
-ENTRYPOINT ["/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+ENTRYPOINT ["/usr/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+
