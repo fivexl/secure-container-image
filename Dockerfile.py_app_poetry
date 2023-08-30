@@ -28,7 +28,7 @@ RUN poetry config virtualenvs.create true && \
 
 # Copy the rest of the project over and build the app
 # hadolint ignore=DL3007
-FROM ghcr.io/fivexl/secure-container-image-base-distroless:latest AS runtime
+FROM ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:latest AS runtime
 
 COPY --from=build /.venv /.venv
 WORKDIR /app

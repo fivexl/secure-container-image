@@ -63,35 +63,35 @@ jobs:
 
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.distroless
+          dockerfile: Dockerfile.python3-distroless-debian-11
       
       - name: Build base distroless image
         id: docker_build_distroless
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: Dockerfile.distroless
+          file: Dockerfile.python3-distroless-debian-11
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-base-distroless:latest
-            ghcr.io/fivexl/secure-container-image-base-distroless:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-python3-distroless-debian-11:latest
+            ghcr.io/fivexl/secure-container-image-python3-distroless-debian-11:${{ github.sha }}
           build-args: |
             BASE_IMAGE_VERSION: ${{ github.sha }}
 
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.distroless_base_node
+          dockerfile: Dockerfile.nodejs20-distroless-debian-11
 
       - name: Build Docker image node
         id: docker_build_base_node_image
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: Dockerfile.distroless_base_node
+          file: Dockerfile.nodejs20-distroless-debian-11
           push: true
           tags: |
-            ghcr.io/fivexl/secure-container-image-distroless_base_node:latest
-            ghcr.io/fivexl/secure-container-image-distroless_base_node:${{ github.sha }}
+            ghcr.io/fivexl/secure-container-image-nodejs20-distroless-debian-11:latest
+            ghcr.io/fivexl/secure-container-image-nodejs20-distroless-debian-11:${{ github.sha }}
 
       # Build poetry_example Python image
       - uses: hadolint/hadolint-action@v3.1.0
@@ -148,12 +148,8 @@ jobs:
       matrix:
         image:
           - secure-container-image-base
-          - secure-container-image-goapp
           - secure-container-image-base-distroless
           - secure-container-image-distroless_base_node
-          - secure-container-image-py_app_poetry
-          - secure-container-image-py_app_poetry_no_venv
-          - secure-container-image-node_app
     steps:
       - uses: actions/checkout@v2
 
