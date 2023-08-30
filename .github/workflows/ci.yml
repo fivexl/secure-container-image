@@ -141,15 +141,15 @@ jobs:
             ghcr.io/fivexl/secure-container-image-node-app:latest
             ghcr.io/fivexl/secure-container-image-node-app:${{ github.sha }}
 
-  # Run Snyk to check Docker image for vulnerabilities
+# Run Snyk to check Docker image for vulnerabilities
   snyk:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image:
-          - secure-container-image-base
-          - secure-container-image-base-distroless
-          - secure-container-image-distroless_base_node
+        config:
+          - {image: "secure-container-image-base", dockerfile: "Dockerfile.base"}
+          - {image: "secure-container-image-python3-distroless-debian-11", dockerfile: "Dockerfile.python3-distroless-debian-11"}
+          - {image: "secure-container-image-secure-container-image-nodejs20-distroless-debian-11", dockerfile: "Dockerfile.nodejs20-distroless-debian-11"}
     steps:
       - uses: actions/checkout@v2
 
@@ -159,16 +159,10 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          image: ghcr.io/fivexl/${{ matrix.image }}:${{ github.sha }}
-          args: --severity-threshold=high --sarif-file-output=${{ matrix.image }}_snyk.sarif
+          image: ghcr.io/fivexl/${{ matrix.config.image }}:${{ github.sha }}
+          args: --severity-threshold=high --file=${{ matrix.config.dockerfile }} --sarif-file-output=${{ matrix.config.image }}_snyk.sarif
 
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: ${{ matrix.image }}_snyk.sarif
-
-            
-
-            
-
-      
+          sarif_file: ${{ matrix.config.image }}_snyk.sarif
