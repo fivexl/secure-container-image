@@ -150,7 +150,7 @@ jobs:
         config:
           - {image: "secure-container-image-base", dockerfile: "Dockerfile.base"}
           - {image: "secure-container-image-python3-distroless-debian-11", dockerfile: "Dockerfile.python3-distroless-debian-11"}
-          - {image: "secure-container-image-secure-container-image-nodejs20-distroless-debian-11", dockerfile: "Dockerfile.nodejs20-distroless-debian-11"}
+          - {image: "secure-container-image-nodejs20-distroless-debian-11", dockerfile: "Dockerfile.nodejs20-distroless-debian-11"}
     steps:
       - uses: actions/checkout@v2
 
