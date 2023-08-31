@@ -161,9 +161,5 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: ghcr.io/fivexl/${{ matrix.config.image }}:${{ github.sha }}
-          args: --severity-threshold=high --file=${{ matrix.config.dockerfile }} --sarif --sarif-file-output=${{ matrix.config.image }}_snyk.sarif
+          args: --severity-threshold=high --file=${{ matrix.config.dockerfile }}
 
-      - name: Upload result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: ${{ matrix.config.image }}_snyk.sarif
