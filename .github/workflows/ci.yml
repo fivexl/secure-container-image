@@ -63,14 +63,14 @@ jobs:
 
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.base-python3-distroless-debian-1
+          dockerfile: Dockerfile.base-python3-distroless-debian-11
       
       - name: Build base python3 distroless image
         id: docker_build_base_python3_distroless_image
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: Dockerfile.base-python3-distroless-debian-1
+          file: Dockerfile.base-python3-distroless-debian-11
           push: true
           tags: |
             ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:latest
