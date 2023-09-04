@@ -50,8 +50,5 @@ COPY --from=loader /loader/passwd /etc/passwd
 ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
 
-HEALTHCHECK --interval=1m --timeout=3s \
-    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
-
 USER app
 WORKDIR /app

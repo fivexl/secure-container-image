@@ -4,7 +4,7 @@ FROM node:16 AS build
 WORKDIR /deps
 
 # Copy package.json and package-lock.json for installing dependencies
-COPY ./node_src/package*.json ./
+COPY ./src/package*.json ./
 
 # Install the Node.js dependencies
 RUN npm install
@@ -16,6 +16,16 @@ FROM ghcr.io/fivexl/secure-container-image-nodejs20-distroless-debian-11:latest 
 # Copy over the deps
 COPY --from=build /deps /app
 # Copy the rest of the project over
-COPY ./node_src/app /app
+COPY ./src/app /app
+
+HEALTHCHECK --interval=1m --timeout=3s \
+    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
 
 CMD ["server.js"]
+
+# To run this example app:
+# Move to the directory where this file is located and run:
+# docker build -t node-app -f Dockerfile.node-app .
+# docker run -p 8080:80 -d node-app
+# curl http://localhost:8080/
+# curl http://localhost:8080/stats

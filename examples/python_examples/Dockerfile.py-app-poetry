@@ -35,4 +35,16 @@ WORKDIR /app
 COPY ./py_src ./app
 EXPOSE 80
 
+HEALTHCHECK --interval=1m --timeout=3s \
+    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
+
 ENTRYPOINT ["/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+
+
+
+# To run this example app:
+# Move to the directory where this file is located and run:
+# docker build -t py-app-poetry -f Dockerfile.py-app-poetry .
+# docker run -p 8080:80 -d py-app-poetry
+# curl http://localhost:8080/
+# curl http://localhost:8080/stats
