@@ -1,4 +1,5 @@
 # secure-container-image
+![Build and push Docker images](https://github.com/fivexl/secure-container-image/workflows/Build%20and%20push%20Docker%20images/badge.svg?branch=main)
 ![Hadolint](https://github.com/fivexl/secure-container-image/workflows/Hadolint/badge.svg?branch=main&event=push)
 
 
