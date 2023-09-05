@@ -45,24 +45,6 @@ jobs:
 
       - uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile.goapp
-
-      - name: Build Docker image goapp
-        id: docker_build_goapp
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile.goapp
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-goapp:latest
-            ghcr.io/fivexl/secure-container-image-goapp:${{ github.sha }}
-          build-args: |
-            ALPINE_VERSION: 3.18
-            BASE_IMAGE_VERSION: ${{ github.sha }}
-
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
           dockerfile: Dockerfile.base-python3-distroless-debian-11
       
       - name: Build base python3 distroless image
@@ -92,6 +74,24 @@ jobs:
           tags: |
             ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:latest
             ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:${{ github.sha }}
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./examples/go_app_example/Dockerfile.goapp
+
+      - name: Build Docker image goapp
+        id: docker_build_goapp
+        uses: docker/build-push-action@v3
+        with:
+          context: ./examples/go_app_example/
+          file: ./examples/go_app_example/Dockerfile.goapp
+          push: true
+          tags: |
+            ghcr.io/fivexl/secure-container-image-example-goapp:latest
+            ghcr.io/fivexl/secure-container-image-example-goapp:${{ github.sha }}
+          build-args: |
+            ALPINE_VERSION: 3.18
+            BASE_IMAGE_VERSION: ${{ github.sha }}
 
       # Build py-app-poetry Python image
       - uses: hadolint/hadolint-action@v3.1.0
