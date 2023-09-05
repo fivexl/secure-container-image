@@ -1,4 +1,7 @@
 # secure-container-image
+![Hadolint](https://github.com/fivexl/secure-container-image/workflows/Hadolint/badge.svg?branch=main&event=push)
+
+
 Collection of secure Docker container images
 
 - Dockerfile.base. Example of minimal base image that could be used as a runtime base for apps that could be compliled into a binary (think golang, rust, c etc)
