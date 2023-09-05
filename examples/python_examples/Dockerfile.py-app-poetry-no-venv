@@ -24,7 +24,7 @@ RUN poetry config virtualenvs.create false && \
 
 # Copy the rest of the project over and build the app
 # hadolint ignore=DL3007
-FROM ghcr.io/fivexl/secure-container-image-python3-distroless-debian-11:latest AS runtime
+FROM ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:latest AS runtime
 
 # Set the PYTHONPATH to the deps directory
 ENV PYTHONPATH="/usr/bin/deps"
