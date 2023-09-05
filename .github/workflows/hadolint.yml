@@ -1,0 +1,39 @@
+name: Hadolint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint_dockerfiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.base
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.base-python3-distroless-debian-11
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.base-nodejs20-distroless-debian-11
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./examples/go_app_example/Dockerfile.goapp
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./examples/python_examples/Dockerfile.py-app-poetry
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./examples/python_examples/Dockerfile.py-app-poetry-no-venv
+
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./examples/node_examples/Dockerfile.node-app

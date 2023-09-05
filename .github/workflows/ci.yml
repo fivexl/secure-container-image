@@ -25,10 +25,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile.base
-
       - name: Build Docker image Base
         id: docker_build_base
         uses: docker/build-push-action@v3
@@ -43,10 +39,6 @@ jobs:
           build-args: |
             ALPINE_VERSION: 3.18
 
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile.base-python3-distroless-debian-11
-      
       - name: Build base python3 distroless image
         id: docker_build_base_python3_distroless_image
         uses: docker/build-push-action@v3
@@ -60,10 +52,6 @@ jobs:
           build-args: |
             BASE_IMAGE_VERSION: ${{ github.sha }}
 
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile.base-nodejs20-distroless-debian-11
-
       - name: Build base nodejs20 distroless image
         id: docker_build_base_nodejs20_distroless_image
         uses: docker/build-push-action@v3
@@ -74,10 +62,6 @@ jobs:
           tags: |
             ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:latest
             ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:${{ github.sha }}
-
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ./examples/go_app_example/Dockerfile.goapp
 
       - name: Build Docker image goapp
         id: docker_build_goapp
@@ -93,11 +77,6 @@ jobs:
             ALPINE_VERSION: 3.18
             BASE_IMAGE_VERSION: ${{ github.sha }}
 
-      # Build py-app-poetry Python image
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ./examples/python_examples/Dockerfile.py-app-poetry
-
       - name: Build Docker image py-app-poetry
         id: docker_build_poetry_example
         uses: docker/build-push-action@v3
@@ -108,11 +87,6 @@ jobs:
           tags: |
             ghcr.io/fivexl/secure-container-image-example-py-app-poetry:latest
             ghcr.io/fivexl/secure-container-image-example-py-app-poetry:${{ github.sha }}
-
-      # Build py-app-poetry-no-venv Python image
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ./examples/python_examples/Dockerfile.py-app-poetry-no-venv
 
       - name: Build Docker image py-app-poetry-no-venv
         id: docker_build_poetry_without_venv_example
@@ -125,11 +99,6 @@ jobs:
             ghcr.io/fivexl/secure-container-image-example-py-app-poetry-no-venv:latest
             ghcr.io/fivexl/secure-container-image-example-py-app-poetry-no-venv:${{ github.sha }}
 
-      # Build example node image
-      - uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ./examples/node_examples/Dockerfile.node-app
-        
       - name: Build Docker image node-app
         id: docker_build_node_app
         uses: docker/build-push-action@v3
