@@ -1,4 +1,5 @@
 ARG DEBIAN_VERSION=11
+ARG PYTHON_RUNTIME_IMAGE_TAG=b67186b00dc766a298ceb9dd981ef02ae0530c29
 
 FROM debian:${DEBIAN_VERSION} AS build
 
@@ -9,7 +10,11 @@ ARG PYTHON3_VERSION=3.9.2-3
 ARG PYTHON3_PIP_VERSION=20.3.4-4+deb11u1
 
 RUN apt-get update && \
-  apt-get install --no-install-suggests --no-install-recommends --yes python3=${PYTHON3_VERSION} python3-pip=${PYTHON3_PIP_VERSION} gcc=${GCC_VERSION} libpython3-dev=${LIBPYTHON3_VERSION} && \
+  apt-get install --no-install-suggests --no-install-recommends --yes \
+  python3=${PYTHON3_VERSION} \
+  python3-pip=${PYTHON3_PIP_VERSION} \
+  gcc=${GCC_VERSION} \
+  libpython3-dev=${LIBPYTHON3_VERSION} && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \
   pip install --no-cache-dir "poetry==${POETRY_VERSION}"
@@ -23,8 +28,7 @@ RUN poetry config virtualenvs.create false && \
   poetry install 
 
 # Copy the rest of the project over and build the app
-# hadolint ignore=DL3007
-FROM ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:latest AS runtime
+FROM ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:${PYTHON_RUNTIME_IMAGE_TAG} AS runtime
 
 # Set the PYTHONPATH to the deps directory
 ENV PYTHONPATH="/usr/bin/deps"
