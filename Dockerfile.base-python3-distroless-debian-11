@@ -57,8 +57,6 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ENV TMPDIR="/app/tmp/"
 ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
 
-HEALTHCHECK --interval=1m --timeout=3s \
-    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
-
+# Set user
 USER app
 WORKDIR /app
