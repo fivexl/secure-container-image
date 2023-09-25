@@ -44,8 +44,6 @@ RUN mkdir -m 0700 /tmp/tmp
 ### RUN IMAGE ###
 FROM gcr.io/distroless/python3-debian11:${DISTROLESS_VERSION}
 
-# This part used as example for Container Hardening blog.
-#--------------------------------------------------------
 # Copy necessary files from loader
 COPY --from=loader /loader/group /etc/group 
 COPY --from=loader /loader/passwd /etc/passwd 
@@ -53,7 +51,6 @@ COPY --from=loader /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certific
 COPY --from=loader /etc/os-release /etc/os-release
 COPY --from=loader /loader/lprobe /usr/bin/lprobe
 COPY --from=loader --chown=app:app --chmod=0700 /tmp/tmp /app/tmp
-#--------------------------------------------------------
 
 # Set ENV
 ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

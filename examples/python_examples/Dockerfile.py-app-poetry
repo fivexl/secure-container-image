@@ -4,8 +4,6 @@ ARG PYTHON_RUNTIME_IMAGE_TAG=b67186b00dc766a298ceb9dd981ef02ae0530c29
 
 FROM debian:${DEBIAN_VERSION} AS build
 
-# This part used as example for Container Hardening blog.
-#--------------------------------------------------------
 ARG POETRY_VERSION=1.6.1
 ARG LIBPYTHON3_VERSION=3.9.2-3
 ARG GCC_VERSION=4:10.2.1-1
@@ -13,15 +11,14 @@ ARG PYTHON3_VERSION=3.9.2-3
 ARG PYTHON3_PIP_VERSION=20.3.4-4+deb11u1
 
 RUN apt-get update && \
-    apt-get install --no-install-suggests --no-install-recommends --yes \
-    python3=${PYTHON3_VERSION} \
-    python3-pip=${PYTHON3_PIP_VERSION} \
-    gcc=${GCC_VERSION} \
-    libpython3-dev=${LIBPYTHON3_VERSION} && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip install --no-cache-dir "poetry==${POETRY_VERSION}"
-#--------------------------------------------------------
+  apt-get install --no-install-suggests --no-install-recommends --yes \
+  python3=${PYTHON3_VERSION} \
+  python3-pip=${PYTHON3_PIP_VERSION} \
+  gcc=${GCC_VERSION} \
+  libpython3-dev=${LIBPYTHON3_VERSION} && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/* && \
+  pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 # Copy just the pyproject.toml and poetry.lock files to install dependencies
 COPY ./py_src/pyproject.toml ./py_src/poetry.lock /
@@ -35,11 +32,10 @@ RUN poetry config virtualenvs.create true && \
   # Install dependencies
   poetry install
 
-# This part used as example for Container Hardening blog.
-#--------------------------------------------------------
+
 # Copy the rest of the project over and build the app
 FROM ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:${PYTHON_RUNTIME_IMAGE_TAG} AS runtime
-#--------------------------------------------------------
+
 
 COPY --from=build /.venv /.venv
 WORKDIR /app
@@ -47,7 +43,7 @@ COPY ./py_src ./app
 EXPOSE 80
 
 HEALTHCHECK --interval=1m --timeout=3s \
-    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
+  CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
 
 ENTRYPOINT ["/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
 
