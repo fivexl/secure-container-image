@@ -1,0 +1,14 @@
+# Ignore Git directory
+.git/
+
+# Ignore all markdown files
+*.md
+
+# Ignore all .n files
+*.n
+
+# Ignore credentials
+credentials.json
+
+# Ignore temporary files
+*.tmp
