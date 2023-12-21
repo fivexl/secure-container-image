@@ -8,6 +8,9 @@ COPY ./gosrc/main.go /app
 RUN go mod init github.com/fivexl/secure-container-image/gosrc && go build -o app
 
 # Actual runtime image
+# For testing purposes we are using the 'latest' tag, but for production, we recommend using a specific version. For example:
+#    ARG BASE_IMAGE_TAG=46fd9edb1422ec7610e3ba3ac0b7d40d46e48f4e
+#    FROM ghcr.io/fivexl/fivexl/secure-container-image-base:${BASE_IMAGE_TAG} AS runtime
 FROM ghcr.io/fivexl/secure-container-image-base:${BASE_IMAGE_VERSION}
 COPY --from=builder /app/app /app/app
 EXPOSE 8080
