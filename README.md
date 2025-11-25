@@ -1,3 +1,16 @@
+[![FivexL](https://releases.fivexl.io/fivexlbannergit_new.png)](https://fivexl.io/#email-subscription)
+
+### Want practical AWS infrastructure insights?
+
+👉 [Subscribe to our newsletter](https://fivexl.io/#email-subscription) to get:
+
+- Real stories from real AWS projects  
+- No-nonsense DevOps tactics  
+- Cost, security & compliance patterns that actually work  
+- Expert guidance from engineers in the field
+
+=========================================================================
+
 # secure-container-image
 ![Build and push Docker images](https://github.com/fivexl/secure-container-image/workflows/Build%20and%20push%20Docker%20images/badge.svg?branch=main)
 ![Hadolint](https://github.com/fivexl/secure-container-image/workflows/Hadolint/badge.svg?branch=main&event=push)
@@ -25,3 +38,4 @@ Examples of application images that use above base images can be found in the `e
 
 ## Thoughts and considerations
 You always have to balance security and productivity. While images described here provide above average level of security (nothing can be 100% secure), you would need to find a way to enable your developers to do their job when needed. By this, we mostly mean live troubleshooting. Since secure app images do not contain shell and debug tools, you won't even be able to exec into those running containers. But from time to time, developers need to. Of course, first put all effort into ensuring that you export logs and all possible telemetry from the application to outside so developers do not need to exec. Still, there are cases when there is no way around it. Thus we recommend building a second version of the same image using a different base (think Alpine) that could be used for debugging. The idea here is to have the possibility of swapping secure images to debug images when it is needed to troubleshoot the app. This type of swap should require elevated permissions to execute and should only be used when there is no other way.
+
