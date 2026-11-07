@@ -237,8 +237,9 @@ jobs:
           pattern: digests-${{ inputs.family }}-*
           path: digests
 
-      # A slower run that started earlier must not move tags back to older
-      # content. Only a confirmed missing tag counts as "nothing published";
+      # ci.yml serializes runs, but re-running an old run's promote job must
+      # still not move tags back to older content. Only a confirmed missing
+      # tag counts as "nothing published";
       # any other registry error stops the promotion.
       - name: Skip if a newer build is already published
         id: stale

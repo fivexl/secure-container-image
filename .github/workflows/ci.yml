@@ -11,6 +11,13 @@ on:
 
 permissions: {}
 
+# One run per branch at a time, in the order runs were created; a newer run
+# replaces one still pending. So an older main build never publishes after a
+# newer one. Pull request runs cancel their outdated predecessors.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   setup:
     runs-on: ubuntu-24.04
