@@ -33,6 +33,9 @@ static_resources:
   clusters:
     - name: upstream
       type: STRICT_DNS
+      # IPv4 first: localhost would otherwise resolve to ::1, which an
+      # IPv4-only app does not listen on.
+      dns_lookup_family: V4_PREFERRED
       connect_timeout: 2s
       load_assignment:
         cluster_name: upstream

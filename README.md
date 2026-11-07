@@ -39,7 +39,7 @@ Every image sets `WORKDIR /app`, owned by uid 65532, and `TMPDIR=/tmp`. The Node
 
 The `-rds` variants trust the [AWS RDS global certificate bundle](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) in addition to the system CAs. It is appended to `/etc/ssl/certs/ca-certificates.crt` and also kept on its own as `/etc/ssl/certs/aws-rds.crt`. For Node.js, the `-rds` variant sets `NODE_EXTRA_CA_CERTS` to that file, because Node.js ignores the system CA file by default. Use the plain tags unless your app connects to RDS over TLS.
 
-The `-dev` variants are built from distroless `:debug-nonroot` and add a busybox shell at `/busybox/sh`. Use one only to troubleshoot: rebuild your app on it, swap it in, then swap back. It does not include the RDS CA bundle. The static base has no `-dev` variant, because busybox needs a libc.
+The `-dev` variants are built from distroless `:debug-nonroot` and add a busybox shell at `/busybox/sh`. Use one only to troubleshoot: rebuild your app on it, swap it in, then swap back. It does not include the RDS CA bundle. The static base has no `-dev` variant; to debug a static binary, attach a debug container to it, for example with `kubectl debug`.
 
 Every image carries the label `io.fivexl.image.variant` (`production`, `rds` or `dev`), so admission policies can tell variants apart, for example to reject `dev` in production.
 
@@ -124,7 +124,7 @@ scripts/smoke-test.sh base nodejs dev local/nodejs-dev:test
 scripts/smoke-test.sh example nodejs local/nodejs-example:test
 ```
 
-Replace `nodejs` with `static` or `python3` for the other families. The `static` family also builds the Envoy example, and its smoke test proxies to the Go example:
+Replace `nodejs` with `static` or `python3` for the other families, and skip the `dev` line for `static`. The `static` family also builds the Envoy example, and its smoke test proxies to the Go example:
 
 ```shell
 scripts/smoke-test.sh envoy local/static-envoy-example:test local/static-example:test
@@ -138,10 +138,11 @@ The Envoy example replaces that script with a small Go program, `examples/envoy_
 
 - reads `LISTEN_PORT` (default `8080`), `UPSTREAM_HOST` (default `localhost`) and `UPSTREAM_PORT` (default `8081`);
 - rejects anything that is not a port number, a host name or an IP address, and names every bad variable in one error;
-- renders `envoy.yaml.tmpl` into `$TMPDIR/envoy.yaml`, with the admin listener on `127.0.0.1:9901` only;
-- replaces itself with Envoy through `syscall.Exec`, so Envoy is PID 1 and receives signals directly. Extra container arguments are passed on to Envoy.
+- refuses the admin port `9901` as `LISTEN_PORT`, and as `UPSTREAM_PORT` on a loopback host, so the admin API never reaches the public listener;
+- renders `envoy.yaml.tmpl` into `$TMPDIR/envoy.yaml` (`/tmp` when `TMPDIR` is unset), with the admin listener on `127.0.0.1:9901` only;
+- replaces itself with Envoy through `syscall.Exec`, so Envoy is PID 1 and receives signals directly. The entrypoint passes extra container arguments on to Envoy.
 
-The build stage runs the entrypoint's unit tests. Envoy is linked against glibc, so the example runs on Envoy's own distroless image rather than on `secure-container-image-base`. The `HEALTHCHECK` uses lprobe against the admin `/ready` endpoint.
+Docker runs the entrypoint's unit tests in the build stage. Envoy is linked against glibc, so the example runs on Envoy's own distroless image rather than on `secure-container-image-base`. The `HEALTHCHECK` uses lprobe against the admin `/ready` endpoint. Envoy resolves the upstream IPv4 first, so `localhost` reaches an app that listens on IPv4 only. CI reports Trivy findings in the Envoy image without failing, because its CVEs come from upstream Envoy and must not hold back a base.
 
 Use a shell script when it is one line that `exec`s the process. Write the entrypoint in Go once it validates input or renders config.
 

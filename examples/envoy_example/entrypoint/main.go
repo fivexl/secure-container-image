@@ -25,6 +25,8 @@ const (
 //go:embed envoy.yaml.tmpl
 var configTemplate string
 
+var configTmpl = template.Must(template.New("envoy").Parse(configTemplate))
+
 type config struct {
 	ListenPort   int
 	UpstreamHost string
@@ -48,11 +50,13 @@ func parsePort(name, value string) (int, error) {
 	return port, nil
 }
 
-// validHost accepts an IP address or an RFC 1123 host name.
+// validHost accepts an IP address or an RFC 1123 host name, including an
+// absolute one with a trailing dot.
 func validHost(host string) bool {
 	if net.ParseIP(host) != nil {
 		return true
 	}
+	host = strings.TrimSuffix(host, ".")
 	if len(host) > 253 {
 		return false
 	}
@@ -62,6 +66,14 @@ func validHost(host string) bool {
 		}
 	}
 	return true
+}
+
+func isLoopback(host string) bool {
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	return host == "localhost" || strings.HasSuffix(host, ".localhost")
 }
 
 // loadConfig applies defaults to unset or empty variables and checks every
@@ -86,20 +98,19 @@ func loadConfig(getenv func(string) string) (config, error) {
 	}
 	if !validHost(c.UpstreamHost) {
 		errs = append(errs, fmt.Errorf("UPSTREAM_HOST=%q: not a host name or IP address", c.UpstreamHost))
+	} else if c.UpstreamPort == adminPort && isLoopback(c.UpstreamHost) {
+		// Would expose the admin API (/quitquitquit, /config_dump) on the public listener.
+		errs = append(errs, fmt.Errorf("UPSTREAM_PORT=%d on %s: that is the Envoy admin listener", adminPort, c.UpstreamHost))
 	}
 	return c, errors.Join(errs...)
 }
 
 func render(c config, path string) error {
-	tmpl, err := template.New("envoy").Option("missingkey=error").Parse(configTemplate)
-	if err != nil {
-		return err
-	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
-	if err := tmpl.Execute(f, c); err != nil {
+	if err := configTmpl.Execute(f, c); err != nil {
 		f.Close()
 		return err
 	}

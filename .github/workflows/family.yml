@@ -149,11 +149,18 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/sarif"
           rc=0
-          while read -r _ variant image; do
+          while read -r kind variant image; do
             category="$FAMILY-$variant-$ARCH"
             echo "::group::trivy $category"
-            trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore.yaml --exit-code 1 \
-              --format table "$image" || rc=1
+            if ! trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore.yaml --exit-code 1 \
+              --format table "$image"; then
+              # Envoy is an upstream image; its CVEs are reported but must not hold back a base.
+              if [[ $kind == envoy ]]; then
+                echo "::warning::fixable HIGH/CRITICAL findings in $image (not gating)"
+              else
+                rc=1
+              fi
+            fi
             trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore.yaml \
               --format sarif --output "$RUNNER_TEMP/sarif/$category.raw" "$image"
             # One category per image, so results of different images don't overwrite each other.
@@ -178,6 +185,7 @@ jobs:
               base) scripts/smoke-test.sh base "$FAMILY" "$variant" "$image" ;;
               example) scripts/smoke-test.sh example "$FAMILY" "$image" ;;
               envoy) scripts/smoke-test.sh envoy "$image" "local/$FAMILY-example:test" ;;
+              *) echo "::error::unknown image kind $kind"; exit 1 ;;
             esac
             echo "::endgroup::"
           done < "$RUNNER_TEMP/images"

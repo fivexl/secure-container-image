@@ -15,6 +15,7 @@ COPY --from=build /out/entrypoint /usr/local/bin/entrypoint
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
+# Clears Envoy's own CMD; container arguments are passed on to Envoy.
 CMD []
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD ["lprobe", "-mode=http", "-endpoint=/ready", "-port=9901"]

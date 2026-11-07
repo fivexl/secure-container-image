@@ -29,7 +29,7 @@ variable "FAMILIES" {
       dockerfile  = "Dockerfile.base"
       package     = "secure-container-image-base"
       description = "Distroless Debian 13 base for static binaries, with lprobe"
-      # No dev variant: distroless's busybox shell needs a libc.
+      # No dev variant: debug a static binary from outside, e.g. kubectl debug.
       variants = ["production", "rds"]
     }
     python3 = {
