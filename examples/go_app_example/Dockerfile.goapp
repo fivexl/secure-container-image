@@ -1,19 +1,20 @@
-ARG ALPINE_VERSION=3.18
-ARG BASE_IMAGE_VERSION=latest
+# syntax=docker/dockerfile:1
 
-# build stage
-FROM golang:1.20.5-alpine${ALPINE_VERSION} AS builder
-WORKDIR /app
-COPY ./gosrc/main.go /app
-RUN go mod init github.com/fivexl/secure-container-image/gosrc && go build -o app
+FROM golang:1.27-trixie AS build
+WORKDIR /src
+COPY gosrc/ ./
+# Static binary: the runtime base has no libc.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/app .
 
-# Actual runtime image
-# For testing purposes we are using the 'latest' tag, but for production, we recommend using a specific version. For example:
-#    ARG BASE_IMAGE_TAG=46fd9edb1422ec7610e3ba3ac0b7d40d46e48f4e
-#    FROM ghcr.io/fivexl/fivexl/secure-container-image-base:${BASE_IMAGE_TAG} AS runtime
-FROM ghcr.io/fivexl/secure-container-image-base:${BASE_IMAGE_VERSION}
-COPY --from=builder /app/app /app/app
+# CI builds the base from this repo and substitutes it for this reference.
+# Production images should follow a floating tag or pin @sha256, see README.
+# hadolint ignore=DL3007
+FROM ghcr.io/fivexl/secure-container-image-base:latest
+COPY --from=build /out/app /app/app
 EXPOSE 8080
 ENTRYPOINT ["/app/app"]
-HEALTHCHECK --interval=1m --timeout=3s \
+HEALTHCHECK --interval=30s --timeout=3s \
   CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=8080"]
+
+# docker build -t goapp -f Dockerfile.goapp .
+# docker run --read-only --cap-drop=ALL --security-opt=no-new-privileges -p 8080:8080 goapp
