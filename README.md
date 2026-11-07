@@ -43,7 +43,7 @@ Every image carries the label `io.fivexl.image.variant` (`production` or `rds`),
 
 ### Updates
 
-CI rebuilds every image daily without cache, from floating upstream tags and unpinned packages, so each build includes the latest upstream security fixes. CI publishes a build only after it passes a Trivy scan (fixable `HIGH` and `CRITICAL`) and smoke tests on both platforms.
+CI rebuilds every image daily without cache, from floating upstream tags and unpinned packages, so each build includes the latest upstream security fixes. CI publishes a build only after it passes a Trivy scan (fixable `HIGH` and `CRITICAL`) and smoke tests on both platforms. Temporary scan exceptions live in `.trivyignore.yaml`, and each one expires on a set date.
 
 All tags float. Follow a tag to get the daily patches. To freeze an image, pin its digest:
 

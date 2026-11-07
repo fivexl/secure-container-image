@@ -149,9 +149,9 @@ jobs:
           while read -r _ variant image; do
             category="$FAMILY-$variant-$ARCH"
             echo "::group::trivy $category"
-            trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore.yaml --exit-code 1 \
               --format table "$image" || rc=1
-            trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed \
+            trivy image --quiet --severity HIGH,CRITICAL --ignore-unfixed --ignorefile .trivyignore.yaml \
               --format sarif --output "$RUNNER_TEMP/sarif/$category.raw" "$image"
             # One category per image, so results of different images don't overwrite each other.
             jq --arg c "$category/" '.runs[].automationDetails = {id: $c}' \

@@ -1,0 +1,10 @@
+# Every entry expires, so a finding comes back if upstream has not fixed it by then.
+vulnerabilities:
+  # zlib1g in gcr.io/distroless/{python3,nodejs26}-debian13. Debian fixed it in
+  # 1:1.3.dfsg+really1.3.1-1+deb13u1; distroless has not rebuilt with it yet.
+  - id: CVE-2026-85091
+    expired_at: 2026-11-21
+    statement: Waiting for distroless to ship zlib1g 1+deb13u1
+  - id: CVE-2026-76844
+    expired_at: 2026-11-21
+    statement: Waiting for distroless to ship zlib1g 1+deb13u1
