@@ -1,3 +1,4 @@
+# Importing pandas at startup proves its native wheels load on this platform.
 import pandas as pd
 from io import StringIO
 

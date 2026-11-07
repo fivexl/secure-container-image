@@ -1,31 +1,22 @@
-# Use the official Node.js image from Docker Hub for building
-FROM node:16 AS build
+# syntax=docker/dockerfile:1
 
+FROM node:26-trixie AS build
 WORKDIR /deps
+COPY src/package.json src/package-lock.json ./
+RUN npm ci --omit=dev
 
-# Copy package.json and package-lock.json for installing dependencies
-COPY ./src/package*.json ./
-
-# Install the Node.js dependencies
-RUN npm install
-
-# Copy the rest of the project over and build the app
+# CI builds the base from this repo and substitutes it for this reference.
+# Production images should follow a floating tag or pin @sha256, see README.
 # hadolint ignore=DL3007
-FROM ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:latest AS runtime
-
-# Copy over the deps
-COPY --from=build /deps /app
-# Copy the rest of the project over
-COPY ./src/app /app
-
-HEALTHCHECK --interval=1m --timeout=3s \
-    CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=80"]
-
+FROM ghcr.io/fivexl/secure-container-image-base-nodejs:latest
+COPY --from=build /deps/node_modules /app/node_modules
+COPY src/app/ /app/
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD ["lprobe", "-mode=http", "-endpoint=/", "-port=8080"]
+# The base ENTRYPOINT is dumb-init -- node.
 CMD ["server.js"]
 
-# To run this example app:
-# Move to the directory where this file is located and run:
 # docker build -t node-app -f Dockerfile.node-app .
-# docker run -p 8080:80 -d node-app
-# curl http://localhost:8080/
+# docker run --read-only --cap-drop=ALL --security-opt=no-new-privileges -p 8080:8080 node-app
 # curl http://localhost:8080/stats

@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+
+# Runtime base for Python 3.13 apps. Build the app's virtualenv on debian:13
+# with apt python3, so the interpreter and ABI match this image.
+# Every input floats on purpose (tags without digests, unpinned packages), so a
+# no-cache rebuild picks up upstream fixes. The digest, SBOM and provenance
+# record exactly what went in.
+
+FROM debian:13 AS prep
+RUN mkdir /app
+
+FROM gcr.io/distroless/python3-debian13:nonroot AS base
+COPY --from=ghcr.io/fivexl/lprobe:0.2.3 /lprobe /usr/bin/lprobe
+COPY --from=prep --chown=65532:65532 /app /app
+ENV TMPDIR=/tmp
+WORKDIR /app
+USER 65532:65532
+LABEL io.fivexl.image.variant=production
+
+FROM debian:13 AS rds-bundle
+# Unpinned on purpose, see the top of the file.
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=base /etc/ssl/certs/ca-certificates.crt /out/ca-certificates.crt
+# https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html
+RUN wget --quiet -O /out/aws-rds.crt https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && cat /out/aws-rds.crt >> /out/ca-certificates.crt
+
+FROM base AS rds
+COPY --from=rds-bundle /out/ca-certificates.crt /out/aws-rds.crt /etc/ssl/certs/
+LABEL io.fivexl.image.variant=rds

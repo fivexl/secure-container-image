@@ -1,14 +1,3 @@
-# Ignore Git directory
-.git/
-
-# Ignore all markdown files
-*.md
-
-# Ignore all .n files
-*.n
-
-# Ignore credentials
-credentials.json
-
-# Ignore temporary files
-*.tmp
+# The base Dockerfiles copy nothing from the build context. Examples use their
+# own directories as context.
+*

@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+
+# Runtime base for Node.js 26 apps. dumb-init runs as PID 1 so signals reach
+# node and zombies get reaped; CMD ["server.js"] still works.
+# Every input floats on purpose (tags without digests, unpinned packages), so a
+# no-cache rebuild picks up upstream fixes. The digest, SBOM and provenance
+# record exactly what went in.
+
+FROM debian:13 AS prep
+# Unpinned on purpose, see the top of the file.
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends dumb-init \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir /app \
+    && dpkg-query -s dumb-init > /dumb-init.status
+
+FROM gcr.io/distroless/nodejs26-debian13:nonroot AS base
+COPY --from=ghcr.io/fivexl/lprobe:0.2.3 /lprobe /usr/bin/lprobe
+COPY --from=prep /usr/bin/dumb-init /usr/bin/dumb-init
+# The package record lets scanners see dumb-init and its version.
+COPY --from=prep /dumb-init.status /var/lib/dpkg/status.d/dumb-init
+COPY --from=prep --chown=65532:65532 /app /app
+ENV TMPDIR=/tmp
+WORKDIR /app
+USER 65532:65532
+LABEL io.fivexl.image.variant=production
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/nodejs/bin/node"]
+
+FROM debian:13 AS rds-bundle
+# Unpinned on purpose, see the top of the file.
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=base /etc/ssl/certs/ca-certificates.crt /out/ca-certificates.crt
+# https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html
+RUN wget --quiet -O /out/aws-rds.crt https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && cat /out/aws-rds.crt >> /out/ca-certificates.crt
+
+FROM base AS rds
+COPY --from=rds-bundle /out/ca-certificates.crt /out/aws-rds.crt /etc/ssl/certs/
+# Node trusts its bundled CA store, not the system file, unless told otherwise.
+ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/aws-rds.crt
+LABEL io.fivexl.image.variant=rds
