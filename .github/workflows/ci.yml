@@ -15,9 +15,6 @@ jobs:
   setup:
     runs-on: ubuntu-24.04
     outputs:
-      # Only main of the canonical repo publishes; a dispatch on a branch or a
-      # fork builds and tests only.
-      publish: ${{ github.repository == 'fivexl/secure-container-image' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
       no-cache: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
       created: ${{ steps.created.outputs.created }}
     steps:
@@ -36,7 +33,6 @@ jobs:
       family: static
       package: secure-container-image-base
       version-tag: debian13
-      publish: ${{ needs.setup.outputs.publish == 'true' }}
       no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
       created: ${{ needs.setup.outputs.created }}
 
@@ -48,7 +44,6 @@ jobs:
       family: python3
       package: secure-container-image-base-python3
       version-tag: python3.13-debian13
-      publish: ${{ needs.setup.outputs.publish == 'true' }}
       no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
       created: ${{ needs.setup.outputs.created }}
 
@@ -60,6 +55,5 @@ jobs:
       family: nodejs
       package: secure-container-image-base-nodejs
       version-tag: node26-debian13
-      publish: ${{ needs.setup.outputs.publish == 'true' }}
       no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
       created: ${{ needs.setup.outputs.created }}

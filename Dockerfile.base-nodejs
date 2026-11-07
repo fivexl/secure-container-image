@@ -12,11 +12,14 @@ FROM debian:13 AS prep
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends dumb-init \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir /app
+    && mkdir /app \
+    && dpkg-query -s dumb-init > /dumb-init.status
 
 FROM gcr.io/distroless/nodejs26-debian13:nonroot AS base
 COPY --from=ghcr.io/fivexl/lprobe:0.2.2 /lprobe /usr/bin/lprobe
 COPY --from=prep /usr/bin/dumb-init /usr/bin/dumb-init
+# The package record lets scanners see dumb-init and its version.
+COPY --from=prep /dumb-init.status /var/lib/dpkg/status.d/dumb-init
 COPY --from=prep --chown=65532:65532 /app /app
 ENV TMPDIR=/tmp
 WORKDIR /app

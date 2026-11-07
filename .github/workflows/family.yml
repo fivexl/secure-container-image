@@ -2,9 +2,8 @@
 # ci.yml calls this once per family, so a failure in one never blocks another.
 #
 # When publishing, bases are pushed untagged by digest, and the test job pulls
-# and tests those exact digests. Promote then signs and attests them, and moves
-# the floating tags only once verification passes. A failure anywhere leaves the
-# tags on the previous good build.
+# and tests those exact digests. Promote then signs and attests every variant,
+# and moves the floating tags only once all of them verify.
 name: Family
 
 on:
@@ -26,9 +25,6 @@ on:
         description: JSON list of variants; tag suffix is empty for production
         type: string
         default: '["production", "rds"]'
-      publish:
-        type: boolean
-        required: true
       created:
         description: Build time (RFC 3339, UTC) shared by every family of the run
         type: string
@@ -41,6 +37,8 @@ permissions: {}
 
 env:
   REGISTRY: ghcr.io/fivexl
+  FAMILY: ${{ inputs.family }}
+  BUILDX_VERSION: v0.33.0
   TRIVY_VERSION: v0.76.1
 
 jobs:
@@ -48,20 +46,24 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    outputs:
+      # Decided here rather than taken from the caller: this workflow is public
+      # and reusable, and only main of this repo may sign under its identity.
+      publish: ${{ github.repository == 'fivexl/secure-container-image' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     steps:
+      - name: Check family
+        run: |
+          [[ $FAMILY =~ ^(static|python3|nodejs)$ ]] || { echo "::error::unknown family $FAMILY"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: List Dockerfiles
-        id: files
-        run: |
-          echo "files=$(docker buildx bake --print "${{ inputs.family }}" 2>/dev/null \
-            | jq -r '[.target[] | "\(.context)/\(.dockerfile)"] | unique | map(sub("^\\./"; "")) | join(" ")')" >> "$GITHUB_OUTPUT"
       - name: Hadolint
-        env:
-          FILES: ${{ steps.files.outputs.files }}
         run: |
-          for f in $FILES; do
+          set -euo pipefail
+          files=$(docker buildx bake --print "$FAMILY" \
+            | jq -r '[.target[] | "\(.context)/\(.dockerfile)"] | unique | map(sub("^\\./"; "")) | .[]')
+          [[ -n $files ]] || { echo "::error::no Dockerfiles found for $FAMILY"; exit 1; }
+          for f in $files; do
             echo "::group::$f"
             docker run --rm -i hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d < "$f"
             echo "::endgroup::"
@@ -70,7 +72,7 @@ jobs:
   # The job body is shared through a YAML anchor; the two jobs differ only in
   # permissions, so pull requests never hold a token that can write packages.
   test:
-    if: ${{ !inputs.publish }}
+    if: ${{ needs.lint.outputs.publish != 'true' }}
     needs: lint
     strategy: &platforms
       fail-fast: false
@@ -84,15 +86,20 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env: &test-env
+      PUBLISH: ${{ needs.lint.outputs.publish }}
+      ARCH: ${{ matrix.arch }}
     steps: &build-test-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          version: ${{ env.BUILDX_VERSION }}
 
       - name: Log in to GHCR
-        if: ${{ inputs.publish }}
+        if: ${{ env.PUBLISH == 'true' }}
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
@@ -101,23 +108,19 @@ jobs:
 
       - name: Build
         env:
-          PUBLISH: ${{ inputs.publish }}
           REVISION: ${{ github.sha }}
           CREATED: ${{ inputs.created }}
           NO_CACHE: ${{ inputs.no-cache && '--no-cache' || '' }}
         run: |
           # shellcheck disable=SC2086 # NO_CACHE is a flag or empty
-          docker buildx bake $NO_CACHE --metadata-file "$RUNNER_TEMP/bake.json" "${{ inputs.family }}"
+          docker buildx bake $NO_CACHE --metadata-file "$RUNNER_TEMP/bake.json" "$FAMILY"
 
       # From here on, test exactly what will be published: the pushed digests
       # when publishing, the locally loaded images otherwise.
       - name: Resolve images under test
         env:
-          FAMILY: ${{ inputs.family }}
           PACKAGE: ${{ inputs.package }}
           VARIANTS: ${{ inputs.variants }}
-          PUBLISH: ${{ inputs.publish }}
-          ARCH: ${{ matrix.arch }}
         run: |
           mkdir -p "$RUNNER_TEMP/digests"
           : > "$RUNNER_TEMP/images"
@@ -140,9 +143,6 @@ jobs:
           cache: true
 
       - name: Scan
-        env:
-          FAMILY: ${{ inputs.family }}
-          ARCH: ${{ matrix.arch }}
         run: |
           mkdir -p "$RUNNER_TEMP/sarif"
           rc=0
@@ -168,8 +168,6 @@ jobs:
           sarif_file: ${{ runner.temp }}/sarif
 
       - name: Smoke test
-        env:
-          FAMILY: ${{ inputs.family }}
         run: |
           while read -r kind variant image; do
             echo "::group::$kind $variant"
@@ -181,17 +179,18 @@ jobs:
             echo "::endgroup::"
           done < "$RUNNER_TEMP/images"
 
+      # Kept for the 30 days GitHub allows re-running the promote job.
       - name: Upload candidate digests
-        if: ${{ inputs.publish }}
+        if: ${{ env.PUBLISH == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: digests-${{ inputs.family }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
 
   test-publish:
-    if: ${{ inputs.publish }}
+    if: ${{ needs.lint.outputs.publish == 'true' }}
     needs: lint
     strategy: *platforms
     runs-on: ${{ matrix.runner }}
@@ -199,11 +198,12 @@ jobs:
       contents: read
       packages: write
       security-events: write
+    env: *test-env
     steps: *build-test-steps
 
   promote:
-    if: ${{ inputs.publish }}
-    needs: test-publish
+    if: ${{ needs.lint.outputs.publish == 'true' }}
+    needs: [lint, test-publish]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -214,10 +214,14 @@ jobs:
       cancel-in-progress: false
     env:
       REPO: ghcr.io/fivexl/${{ inputs.package }}
-      CERT_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/family.yml@refs/heads/main
+      CERT_IDENTITY: https://github.com/fivexl/secure-container-image/.github/workflows/family.yml@refs/heads/main
       CERT_ISSUER: https://token.actions.githubusercontent.com
+      VARIANTS: ${{ inputs.variants }}
+      DIGESTS: digests
     steps:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          version: ${{ env.BUILDX_VERSION }}
       - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
       - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2.0.3
 
@@ -231,50 +235,58 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: digests-${{ inputs.family }}-*
-          path: ${{ runner.temp }}/digests
+          path: digests
 
-      # A slower run that started earlier must not move tags back to older content.
+      # A slower run that started earlier must not move tags back to older
+      # content. Only a confirmed missing tag counts as "nothing published";
+      # any other registry error stops the promotion.
       - name: Skip if a newer build is already published
         id: stale
         env:
           CREATED: ${{ inputs.created }}
         run: |
-          current=$(docker buildx imagetools inspect "$REPO:latest" --format '{{json .Image}}' 2>/dev/null \
-            | jq -r 'if has("config") then . else .["linux/amd64"] end | .config.Labels["org.opencontainers.image.created"] // ""' \
-            || true)
-          echo "published: ${current:-none}, this run: $CREATED"
+          set -euo pipefail
+          if ! out=$(docker buildx imagetools inspect "$REPO:latest" --format '{{json .Image}}' 2> err.txt); then
+            if grep -qiE 'not found|manifest unknown' err.txt; then
+              echo "$REPO:latest does not exist yet"
+              exit 0
+            fi
+            cat err.txt >&2
+            exit 1
+          fi
+          # The legacy Alpine build has no created label; treat it as older.
+          current=$(jq -r 'if has("config") then . else .["linux/amd64"] end
+            | .config.Labels["org.opencontainers.image.created"] // ""' <<< "$out")
+          echo "published: ${current:-no created label}, this run: $CREATED"
           if [[ -n $current && $current > $CREATED ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "::notice::$REPO:latest was built at $current, after this run; leaving tags alone"
           fi
 
-      - name: Merge, sign, attest, verify and tag
+      # Every variant is merged, signed, attested and verified before any
+      # floating tag moves, so a failure leaves all tags on the previous build.
+      - name: Merge, sign, attest and verify
         if: ${{ steps.stale.outputs.skip != 'true' }}
-        env:
-          VARIANTS: ${{ inputs.variants }}
-          VERSION_TAG: ${{ inputs.version-tag }}
-          DIGESTS: ${{ runner.temp }}/digests
         run: |
           set -euo pipefail
           for variant in $(jq -r '.[]' <<< "$VARIANTS"); do
-            suffix=$([[ $variant == production ]] && echo "" || echo "-$variant")
             echo "::group::$variant"
-
             # Build the multi-platform index from the tested per-platform digests
             # and push it by digest only, so nothing follows it yet.
             sources=()
             for arch in amd64 arm64; do
-              sources+=("$REPO@$(cat "$DIGESTS/digests-${{ inputs.family }}-$arch/$variant")")
+              sources+=("$REPO@$(cat "$DIGESTS/digests-$FAMILY-$arch/$variant")")
             done
-            docker buildx imagetools create --dry-run "${sources[@]}" > index.json
-            index="sha256:$(sha256sum index.json | cut -d' ' -f1)"
+            docker buildx imagetools create --dry-run "${sources[@]}" > "index-$variant.json"
+            index="sha256:$(sha256sum "index-$variant.json" | cut -d' ' -f1)"
             oras manifest push --media-type application/vnd.oci.image.index.v1+json \
-              "$REPO@$index" index.json
+              "$REPO@$index" "index-$variant.json"
 
             cosign sign --yes --recursive "$REPO@$index"
             for arch in amd64 arm64; do
               child=$(jq -er --arg a "$arch" \
-                '.manifests[] | select(.platform.os == "linux" and .platform.architecture == $a) | .digest' index.json)
+                '.manifests[] | select(.platform.os == "linux" and .platform.architecture == $a) | .digest' \
+                "index-$variant.json")
               docker buildx imagetools inspect "$REPO@$index" \
                 --format "{{json (index .SBOM \"linux/$arch\").SPDX}}" > "sbom-$arch.spdx.json"
               cosign attest --yes --type spdxjson --predicate "sbom-$arch.spdx.json" "$REPO@$child"
@@ -285,8 +297,19 @@ jobs:
             cosign verify \
               --certificate-identity "$CERT_IDENTITY" --certificate-oidc-issuer "$CERT_ISSUER" \
               "$REPO@$index" > /dev/null
+            echo "$index" > "verified-$variant"
+            echo "::endgroup::"
+          done
 
+      - name: Move floating tags
+        if: ${{ steps.stale.outputs.skip != 'true' }}
+        env:
+          VERSION_TAG: ${{ inputs.version-tag }}
+        run: |
+          set -euo pipefail
+          for variant in $(jq -r '.[]' <<< "$VARIANTS"); do
+            suffix=$([[ $variant == production ]] && echo "" || echo "-$variant")
+            index=$(cat "verified-$variant")
             oras tag "$REPO@$index" "latest$suffix" "$VERSION_TAG$suffix"
             echo "$REPO:latest$suffix and :$VERSION_TAG$suffix -> $index" >> "$GITHUB_STEP_SUMMARY"
-            echo "::endgroup::"
           done

@@ -17,6 +17,8 @@
 
 Minimal runtime base images for containerized apps. Each image is Google [distroless](https://github.com/GoogleContainerTools/distroless) Debian 13 with no shell and no package manager. It runs as the `nonroot` user (uid 65532) and adds [lprobe](https://github.com/fivexl/lprobe) for exec-form `HEALTHCHECK`s. The images are built for `linux/amd64` and `linux/arm64`.
 
+> **Using `secure-container-image-base` from before November 2026?** It moved from Alpine to Debian distroless, and its user changed from uid 2323 to 65532. See [Migrating from the Alpine-Based `secure-container-image-base`](#migrating-from-the-alpine-based-secure-container-image-base), which includes a one-line rollback.
+
 ## Images
 
 | Image | Built from | For |
@@ -35,13 +37,13 @@ Every image sets `WORKDIR /app`, owned by uid 65532, and `TMPDIR=/tmp`. The Node
 | `secure-container-image-base-python3` | `latest`, `python3.13-debian13` | `latest-rds`, `python3.13-debian13-rds` |
 | `secure-container-image-base-nodejs` | `latest`, `node26-debian13` | `latest-rds`, `node26-debian13-rds` |
 
-The `-rds` variants trust the [AWS RDS global certificate bundle](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) in addition to the system CAs. It is appended to `/etc/ssl/certs/ca-certificates.crt` and also kept on its own as `/etc/ssl/certs/aws-rds.crt`. The Node.js `-rds` variant sets `NODE_EXTRA_CA_CERTS` to that file, because Node.js ignores the system CA file by default. Use the plain tags unless your app connects to RDS over TLS.
+The `-rds` variants trust the [AWS RDS global certificate bundle](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) in addition to the system CAs. It is appended to `/etc/ssl/certs/ca-certificates.crt` and also kept on its own as `/etc/ssl/certs/aws-rds.crt`. For Node.js, the `-rds` variant sets `NODE_EXTRA_CA_CERTS` to that file, because Node.js ignores the system CA file by default. Use the plain tags unless your app connects to RDS over TLS.
 
 Every image carries the label `io.fivexl.image.variant` (`production` or `rds`), so admission policies can tell variants apart.
 
 ### Updates
 
-CI rebuilds every image daily without cache, from floating upstream tags and unpinned packages, so each build includes the latest upstream security fixes. A build is published only after it passes a Trivy scan (fixable `HIGH` and `CRITICAL`) and smoke tests on both platforms.
+CI rebuilds every image daily without cache, from floating upstream tags and unpinned packages, so each build includes the latest upstream security fixes. CI publishes a build only after it passes a Trivy scan (fixable `HIGH` and `CRITICAL`) and smoke tests on both platforms.
 
 All tags float. Follow a tag to get the daily patches. To freeze an image, pin its digest:
 
@@ -51,7 +53,7 @@ FROM ghcr.io/fivexl/secure-container-image-base:debian13@sha256:<digest>
 
 A floating base patches nothing until you rebuild and redeploy your image. Rebuild your app images on a schedule as well, daily or weekly, then test and redeploy them.
 
-## Migrating from the Alpine-based `secure-container-image-base`
+## Migrating from the Alpine-Based `secure-container-image-base`
 
 Before this change, `secure-container-image-base` was Alpine 3.18 files on `scratch`. The new image keeps the name and changes the contents:
 
@@ -108,13 +110,17 @@ The `examples` directory holds one app per base. CI builds them against the base
 - `examples/node_examples/Dockerfile.node-app`: an Express 5 app on `secure-container-image-base-nodejs`, installed with `npm ci --omit=dev`.
 - `examples/python_examples/Dockerfile.py-app-uv`: a uvicorn and pandas app on `secure-container-image-base-python3`. The builder is `debian:13` with its own `python3`, the same interpreter and ABI as the runtime, and `uv sync --frozen` installs the dependencies into `/app/.venv`.
 
-Each example listens on port 8080, so it needs no `NET_BIND_SERVICE` capability. To build and smoke-test everything locally (the default `docker` driver cannot pass a built base to the examples, so use a `docker-container` builder):
+Each example listens on port 8080, so it needs no `NET_BIND_SERVICE` capability. To build and smoke-test one family locally, use a `docker-container` builder; the default `docker` driver cannot pass a built base to the examples:
 
 ```shell
 docker buildx create --name scimg --driver docker-container
-docker buildx bake --builder scimg
-scripts/smoke-test.sh example static local/static-example:test
+docker buildx bake --builder scimg nodejs
+scripts/smoke-test.sh base nodejs production local/nodejs-production:test
+scripts/smoke-test.sh base nodejs rds local/nodejs-rds:test
+scripts/smoke-test.sh example nodejs local/nodejs-example:test
 ```
+
+Replace `nodejs` with `static` or `python3` for the other families.
 
 ## Deprecated Images
 
