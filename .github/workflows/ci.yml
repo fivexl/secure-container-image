@@ -2,133 +2,64 @@ name: Build and push Docker images
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+  # Daily no-cache rebuild: floating inputs pick up upstream security fixes.
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions: {}
 
 jobs:
-
-  build:
-
-    runs-on: ubuntu-latest
-
+  setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      # Only main of the canonical repo publishes; a dispatch on a branch or a
+      # fork builds and tests only.
+      publish: ${{ github.repository == 'fivexl/secure-container-image' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+      no-cache: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      created: ${{ steps.created.outputs.created }}
     steps:
-      - uses: actions/checkout@v3
+      - id: created
+        run: echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx (buildkit) runner
-        uses: docker/setup-buildx-action@v2
+  static:
+    needs: setup
+    uses: ./.github/workflows/family.yml
+    permissions: &family-permissions
+      contents: read
+      packages: write
+      security-events: write
+      id-token: write
+    with:
+      family: static
+      package: secure-container-image-base
+      version-tag: debian13
+      publish: ${{ needs.setup.outputs.publish == 'true' }}
+      no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
+      created: ${{ needs.setup.outputs.created }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+  python3:
+    needs: setup
+    uses: ./.github/workflows/family.yml
+    permissions: *family-permissions
+    with:
+      family: python3
+      package: secure-container-image-base-python3
+      version-tag: python3.13-debian13
+      publish: ${{ needs.setup.outputs.publish == 'true' }}
+      no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
+      created: ${{ needs.setup.outputs.created }}
 
-      - name: Build Docker image Base
-        id: docker_build_base
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile.base
-          pull: true
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-base:latest
-            ghcr.io/fivexl/secure-container-image-base:${{ github.sha }}
-          build-args: |
-            ALPINE_VERSION: 3.18
-
-      - name: Build base python3 distroless image
-        id: docker_build_base_python3_distroless_image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile.base-python3-distroless-debian-11
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:latest
-            ghcr.io/fivexl/secure-container-image-base-python3-distroless-debian-11:${{ github.sha }}
-          build-args: |
-            BASE_IMAGE_VERSION: ${{ github.sha }}
-
-      - name: Build base nodejs20 distroless image
-        id: docker_build_base_nodejs20_distroless_image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile.base-nodejs20-distroless-debian-11
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:latest
-            ghcr.io/fivexl/secure-container-image-base-nodejs20-distroless-debian-11:${{ github.sha }}
-
-      - name: Build Docker image goapp
-        id: docker_build_goapp
-        uses: docker/build-push-action@v3
-        with:
-          context: ./examples/go_app_example/
-          file: ./examples/go_app_example/Dockerfile.goapp
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-example-goapp:latest
-            ghcr.io/fivexl/secure-container-image-example-goapp:${{ github.sha }}
-          build-args: |
-            ALPINE_VERSION: 3.18
-            BASE_IMAGE_VERSION: ${{ github.sha }}
-
-      - name: Build Docker image py-app-poetry
-        id: docker_build_poetry_example
-        uses: docker/build-push-action@v3
-        with:
-          context: ./examples/python_examples/
-          file: ./examples/python_examples/Dockerfile.py-app-poetry
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-example-py-app-poetry:latest
-            ghcr.io/fivexl/secure-container-image-example-py-app-poetry:${{ github.sha }}
-
-      - name: Build Docker image py-app-poetry-no-venv
-        id: docker_build_poetry_without_venv_example
-        uses: docker/build-push-action@v3
-        with:
-          context: ./examples/python_examples/
-          file: ./examples/python_examples/Dockerfile.py-app-poetry-no-venv
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-example-py-app-poetry-no-venv:latest
-            ghcr.io/fivexl/secure-container-image-example-py-app-poetry-no-venv:${{ github.sha }}
-
-      - name: Build Docker image node-app
-        id: docker_build_node_app
-        uses: docker/build-push-action@v3
-        with:
-          context: ./examples/node_examples/
-          file: ./examples/node_examples/Dockerfile.node-app
-          push: true
-          tags: |
-            ghcr.io/fivexl/secure-container-image-example-node-app:latest
-            ghcr.io/fivexl/secure-container-image-example-node-app:${{ github.sha }}
-
-# Run Snyk to check Docker image for vulnerabilities
-  snyk:
-    runs-on: ubuntu-latest
-    needs: build
-    strategy:
-      matrix:
-        config:
-          - {image: "secure-container-image-base", dockerfile: "Dockerfile.base"}
-          - {image: "secure-container-image-base-python3-distroless-debian-11", dockerfile: "Dockerfile.base-python3-distroless-debian-11"}
-          - {image: "secure-container-image-base-nodejs20-distroless-debian-11", dockerfile: "Dockerfile.base-nodejs20-distroless-debian-11"}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Run Snyk to check Docker image for vulnerabilities
-        continue-on-error: true
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: ghcr.io/fivexl/${{ matrix.config.image }}:${{ github.sha }}
-          args: --severity-threshold=high --file=${{ matrix.config.dockerfile }}
-
+  nodejs:
+    needs: setup
+    uses: ./.github/workflows/family.yml
+    permissions: *family-permissions
+    with:
+      family: nodejs
+      package: secure-container-image-base-nodejs
+      version-tag: node26-debian13
+      publish: ${{ needs.setup.outputs.publish == 'true' }}
+      no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
+      created: ${{ needs.setup.outputs.created }}

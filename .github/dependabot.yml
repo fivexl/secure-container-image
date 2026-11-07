@@ -1,0 +1,44 @@
+version: 2
+
+# Images float on their tags already; Dependabot moves the tags themselves
+# (golang:1.27 -> 1.28, uv:0.13 -> 0.14) and the action SHAs. A runtime major
+# (Node 27, Python 3.14, Debian 14) is a deliberate migration of tags, builders
+# and README together, so majors are ignored for runtime images.
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /examples/go_app_example
+      - /examples/node_examples
+      - /examples/python_examples
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: gcr.io/distroless/*
+      - dependency-name: debian
+        update-types: [version-update:semver-major]
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+      - dependency-name: golang
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: gomod
+    directory: /examples/go_app_example/gosrc
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /examples/node_examples/src
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: uv
+    directory: /examples/python_examples/py_src
+    schedule:
+      interval: weekly
