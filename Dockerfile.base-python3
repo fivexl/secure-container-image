@@ -10,7 +10,7 @@ FROM debian:13 AS prep
 RUN mkdir /app
 
 FROM gcr.io/distroless/python3-debian13:nonroot AS base
-COPY --from=ghcr.io/fivexl/lprobe:0.2.2 /lprobe /usr/bin/lprobe
+COPY --from=ghcr.io/fivexl/lprobe:0.2.3 /lprobe /usr/bin/lprobe
 COPY --from=prep --chown=65532:65532 /app /app
 ENV TMPDIR=/tmp
 WORKDIR /app

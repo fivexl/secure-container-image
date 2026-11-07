@@ -16,7 +16,7 @@ RUN apt-get update && apt-get upgrade -y \
     && dpkg-query -s dumb-init > /dumb-init.status
 
 FROM gcr.io/distroless/nodejs26-debian13:nonroot AS base
-COPY --from=ghcr.io/fivexl/lprobe:0.2.2 /lprobe /usr/bin/lprobe
+COPY --from=ghcr.io/fivexl/lprobe:0.2.3 /lprobe /usr/bin/lprobe
 COPY --from=prep /usr/bin/dumb-init /usr/bin/dumb-init
 # The package record lets scanners see dumb-init and its version.
 COPY --from=prep /dumb-init.status /var/lib/dpkg/status.d/dumb-init
