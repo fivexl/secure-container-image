@@ -17,6 +17,7 @@ updates:
       - /examples/go_app_example
       - /examples/node_examples
       - /examples/python_examples
+      - /examples/envoy_example
     schedule:
       interval: weekly
     ignore:
@@ -27,9 +28,13 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: golang
         update-types: [version-update:semver-major]
+      - dependency-name: envoyproxy/envoy
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: gomod
-    directory: /examples/go_app_example/gosrc
+    directories:
+      - /examples/go_app_example/gosrc
+      - /examples/envoy_example/entrypoint
     schedule:
       interval: weekly
 

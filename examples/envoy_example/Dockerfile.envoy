@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.27-trixie AS build
+WORKDIR /src
+COPY entrypoint/ ./
+ENV CGO_ENABLED=0
+RUN go vet ./... && go test ./... \
+    && go build -trimpath -ldflags="-s -w" -o /out/entrypoint .
+
+# Envoy is linked against glibc, so it cannot run on the static base. Its own
+# distroless image already runs as uid 65532 with no shell.
+FROM envoyproxy/envoy:distroless-v1.40-latest
+COPY --from=ghcr.io/fivexl/lprobe:0.2.3 /lprobe /usr/bin/lprobe
+COPY --from=build /out/entrypoint /usr/local/bin/entrypoint
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+CMD []
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD ["lprobe", "-mode=http", "-endpoint=/ready", "-port=9901"]
+
+# docker build -t envoy-example -f Dockerfile.envoy .
+# docker run --read-only --cap-drop=ALL --security-opt=no-new-privileges --tmpfs /tmp \
+#   -e UPSTREAM_HOST=app -e UPSTREAM_PORT=8080 -p 8080:8080 envoy-example

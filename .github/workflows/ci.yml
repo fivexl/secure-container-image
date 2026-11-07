@@ -51,6 +51,7 @@ jobs:
       family: python3
       package: secure-container-image-base-python3
       version-tag: python3.13-debian13
+      variants: '["production", "rds", "dev"]'
       no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
       created: ${{ needs.setup.outputs.created }}
 
@@ -62,5 +63,6 @@ jobs:
       family: nodejs
       package: secure-container-image-base-nodejs
       version-tag: node26-debian13
+      variants: '["production", "rds", "dev"]'
       no-cache: ${{ needs.setup.outputs.no-cache == 'true' }}
       created: ${{ needs.setup.outputs.created }}

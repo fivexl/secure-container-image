@@ -135,6 +135,9 @@ jobs:
             echo "base $variant $image" >> "$RUNNER_TEMP/images"
           done
           echo "example example local/$FAMILY-example:test" >> "$RUNNER_TEMP/images"
+          if [[ $FAMILY == static ]]; then
+            echo "envoy envoy local/static-envoy-example:test" >> "$RUNNER_TEMP/images"
+          fi
           cat "$RUNNER_TEMP/images"
 
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
@@ -171,11 +174,11 @@ jobs:
         run: |
           while read -r kind variant image; do
             echo "::group::$kind $variant"
-            if [[ $kind == base ]]; then
-              scripts/smoke-test.sh base "$FAMILY" "$variant" "$image"
-            else
-              scripts/smoke-test.sh example "$FAMILY" "$image"
-            fi
+            case $kind in
+              base) scripts/smoke-test.sh base "$FAMILY" "$variant" "$image" ;;
+              example) scripts/smoke-test.sh example "$FAMILY" "$image" ;;
+              envoy) scripts/smoke-test.sh envoy "$image" "local/$FAMILY-example:test" ;;
+            esac
             echo "::endgroup::"
           done < "$RUNNER_TEMP/images"
 
