@@ -1,21 +1,28 @@
 #!/usr/bin/env bash
 # Smoke tests for the images built by docker-bake.hcl. CI runs them on every
 # platform before anything is published.
-#   scripts/smoke-test.sh base    <static|python3|nodejs> <production|rds> <image>
+#   scripts/smoke-test.sh base    <static|python3|nodejs> <production|rds|dev> <image>
 #   scripts/smoke-test.sh example <static|python3|nodejs> <image>
+#   scripts/smoke-test.sh envoy   <envoy image> <go example image>
 set -euo pipefail
 
 RDS_BUNDLE_URL=https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 # shellcheck disable=SC2054 # the commas belong to the --tmpfs option
 HARDENED=(--read-only --cap-drop=ALL --security-opt=no-new-privileges --user 65532
   --tmpfs /tmp:uid=65532,mode=1777)
+FAST_HEALTH=(--health-interval=2s --health-retries=3 --health-start-period=10s)
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "ok: $*"; }
 
 workdir=$(mktemp -d)
+# Best effort: a failed cleanup must not fail a passing test.
 cleanup() {
-  [[ -n "${cid:-}" ]] && docker rm -f "$cid" >/dev/null 2>&1
+  local c
+  for c in "${cid:-}" "${upstream:-}" "${probe:-}"; do
+    [[ -n $c ]] && docker rm -f "$c" >/dev/null 2>&1 || true
+  done
+  [[ -n "${network:-}" ]] && docker network rm "$network" >/dev/null 2>&1 || true
   rm -rf "$workdir"
 }
 trap cleanup EXIT
@@ -102,13 +109,35 @@ if (!cmd.endsWith("dumb-init")) { console.error(`PID 1 is ${cmd}`); process.exit
   pass "SIGTERM stops the container"
 }
 
+# Only the dev variant may have a shell.
+check_shell() {
+  local image=$1 variant=$2 c path found=()
+  c=$(docker create --entrypoint /usr/bin/lprobe "$image")
+  for path in /bin/sh /busybox/sh; do
+    docker cp -q "$c:$path" - >/dev/null 2>&1 && found+=("$path")
+  done
+  docker rm "$c" >/dev/null
+  if [[ $variant == dev ]]; then
+    docker run --rm "${HARDENED[@]}" --entrypoint /busybox/sh "$image" -c 'exit 0' \
+      || fail "dev variant has no working /busybox/sh"
+    pass "dev variant has /busybox/sh"
+  else
+    (( ${#found[@]} == 0 )) || fail "$variant variant has a shell: ${found[*]}"
+    pass "no shell"
+  fi
+}
+
 cmd_base() {
   local family=$1 variant=$2 image=$3
   # lprobe -h exits 1, so check that it ran and printed its usage.
-  local usage
+  local usage label
   usage=$(docker run --rm "${HARDENED[@]}" --entrypoint /usr/bin/lprobe "$image" -h 2>&1 || true)
   [[ $usage == Usage:* ]] || fail "lprobe -h: $usage"
   pass "lprobe runs"
+  label=$(docker inspect -f '{{index .Config.Labels "io.fivexl.image.variant"}}' "$image")
+  [[ $label == "$variant" ]] || fail "variant label is '$label', want '$variant'"
+  pass "variant label"
+  check_shell "$image" "$variant"
   fetch_rds_bundle
   check_system_ca_file "$image" "$variant"
   case $family in
@@ -120,16 +149,16 @@ cmd_base() {
 }
 
 wait_healthy() {
-  local deadline=$((SECONDS + 60)) state health
+  local c=${1:-$cid} deadline=$((SECONDS + 60)) state health
   while (( SECONDS < deadline )); do
-    state=$(docker inspect -f '{{.State.Status}}' "$cid")
-    health=$(docker inspect -f '{{.State.Health.Status}}' "$cid")
+    state=$(docker inspect -f '{{.State.Status}}' "$c")
+    health=$(docker inspect -f '{{.State.Health.Status}}' "$c")
     [[ $state == running ]] || break
     [[ $health == healthy ]] && return 0
     sleep 1
   done
-  docker inspect -f '{{json .State.Health.Log}}' "$cid" >&2 || true
-  docker logs "$cid" >&2 || true
+  docker inspect -f '{{json .State.Health.Log}}' "$c" >&2 || true
+  docker logs "$c" >&2 || true
   fail "container did not become healthy (state=$state, health=${health:-none})"
 }
 
@@ -142,8 +171,7 @@ expect_body() {
 
 cmd_example() {
   local family=$1 image=$2
-  cid=$(docker run -d "${HARDENED[@]}" -p 127.0.0.1::8080 \
-    --health-interval=2s --health-retries=3 --health-start-period=10s "$image")
+  cid=$(docker run -d "${HARDENED[@]}" "${FAST_HEALTH[@]}" -p 127.0.0.1::8080 "$image")
   wait_healthy
   pass "container is healthy"
   port=$(docker port "$cid" 8080/tcp | head -n1 | cut -d: -f2)
@@ -155,10 +183,40 @@ cmd_example() {
   esac
 }
 
+# Envoy proxies to the Go example, which runs as its upstream on a private network.
+cmd_envoy() {
+  local image=$1 upstream_image=$2
+  network=$(docker network create "smoke-$$")
+  upstream=$(docker run -d "${HARDENED[@]}" "${FAST_HEALTH[@]}" --network "$network" \
+    --network-alias goapp "$upstream_image")
+  cid=$(docker run -d "${HARDENED[@]}" "${FAST_HEALTH[@]}" --network "$network" -p 127.0.0.1::8080 \
+    -e UPSTREAM_HOST=goapp -e UPSTREAM_PORT=8080 "$image")
+  wait_healthy "$upstream"
+  wait_healthy
+  pass "envoy is healthy"
+  port=$(docker port "$cid" 8080/tcp | head -n1 | cut -d: -f2)
+  expect_body /envoy "Hello, envoy!"
+
+  # Detached with a deadline: if validation regressed, Envoy would start and
+  # run in the foreground until the job timed out.
+  local deadline=$((SECONDS + 15)) out
+  probe=$(docker run -d "${HARDENED[@]}" -e UPSTREAM_HOST='bad"host' "$image")
+  while [[ $(docker inspect -f '{{.State.Status}}' "$probe") != exited ]]; do
+    (( SECONDS < deadline )) || fail "entrypoint accepted an invalid UPSTREAM_HOST"
+    sleep 1
+  done
+  out=$(docker logs "$probe" 2>&1)
+  [[ $(docker inspect -f '{{.State.ExitCode}}' "$probe") != 0 ]] \
+    || fail "entrypoint exited 0 on an invalid UPSTREAM_HOST"
+  [[ $out == *UPSTREAM_HOST* ]] || fail "entrypoint error does not name UPSTREAM_HOST: $out"
+  pass "entrypoint rejects an invalid UPSTREAM_HOST"
+}
+
 command=${1:-}
 shift || true
 case $command in
   base) cmd_base "$@" ;;
   example) cmd_example "$@" ;;
-  *) sed -n '2,5p' "$0" >&2; exit 2 ;;
+  envoy) cmd_envoy "$@" ;;
+  *) sed -n '2,6p' "$0" >&2; exit 2 ;;
 esac

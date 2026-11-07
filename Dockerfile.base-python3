@@ -17,6 +17,16 @@ WORKDIR /app
 USER 65532:65532
 LABEL io.fivexl.image.variant=production
 
+# For troubleshooting only: the same base plus a busybox shell at /busybox/sh.
+# It has no RDS trust. Swapping it in should need elevated permission.
+FROM gcr.io/distroless/python3-debian13:debug-nonroot AS dev
+COPY --from=ghcr.io/fivexl/lprobe:0.2.3 /lprobe /usr/bin/lprobe
+COPY --from=prep --chown=65532:65532 /app /app
+ENV TMPDIR=/tmp
+WORKDIR /app
+USER 65532:65532
+LABEL io.fivexl.image.variant=dev
+
 FROM debian:13 AS rds-bundle
 # Unpinned on purpose, see the top of the file.
 # hadolint ignore=DL3008

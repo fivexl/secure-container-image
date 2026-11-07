@@ -29,16 +29,20 @@ variable "FAMILIES" {
       dockerfile  = "Dockerfile.base"
       package     = "secure-container-image-base"
       description = "Distroless Debian 13 base for static binaries, with lprobe"
+      # No dev variant: debug a static binary from outside, e.g. kubectl debug.
+      variants = ["production", "rds"]
     }
     python3 = {
       dockerfile  = "Dockerfile.base-python3"
       package     = "secure-container-image-base-python3"
       description = "Distroless Debian 13 Python 3.13 base, with lprobe"
+      variants    = ["production", "rds", "dev"]
     }
     nodejs = {
       dockerfile  = "Dockerfile.base-nodejs"
       package     = "secure-container-image-base-nodejs"
       description = "Distroless Debian 13 Node.js 26 base, with dumb-init and lprobe"
+      variants    = ["production", "rds", "dev"]
     }
   }
 }
@@ -66,36 +70,36 @@ group "default" {
 }
 
 group "static" {
-  targets = ["static-production", "static-rds", "static-example"]
+  targets = ["static-production", "static-rds", "static-example", "static-envoy-example"]
 }
 
 group "python3" {
-  targets = ["python3-production", "python3-rds", "python3-example"]
+  targets = ["python3-production", "python3-rds", "python3-dev", "python3-example"]
 }
 
 group "nodejs" {
-  targets = ["nodejs-production", "nodejs-rds", "nodejs-example"]
+  targets = ["nodejs-production", "nodejs-rds", "nodejs-dev", "nodejs-example"]
 }
 
 target "_common" {
   pull = true
 }
 
+# One target per family and variant, named <family>-<variant>.
 target "base" {
-  name     = "${family}-${variant}"
+  name     = "${base.family}-${base.variant}"
   inherits = ["_common"]
   matrix = {
-    family  = ["static", "python3", "nodejs"]
-    variant = ["production", "rds"]
+    base = flatten([for f, v in FAMILIES : [for variant in v.variants : { family = f, variant = variant }]])
   }
   context    = "."
-  dockerfile = FAMILIES[family].dockerfile
-  target     = variant == "production" ? "base" : variant
-  labels     = labels(FAMILIES[family].package, FAMILIES[family].description)
+  dockerfile = FAMILIES[base.family].dockerfile
+  target     = base.variant == "production" ? "base" : base.variant
+  labels     = labels(FAMILIES[base.family].package, FAMILIES[base.family].description)
   attest     = PUBLISH ? ["type=sbom", "type=provenance,mode=max"] : []
   output = PUBLISH ? [
-    "type=image,name=${REGISTRY}/${FAMILIES[family].package},push-by-digest=true,name-canonical=true,push=true"
-  ] : local_output("${family}-${variant}")
+    "type=image,name=${REGISTRY}/${FAMILIES[base.family].package},push-by-digest=true,name-canonical=true,push=true"
+  ] : local_output("${base.family}-${base.variant}")
 }
 
 # Examples build FROM the published base name; contexts swap in the base built
@@ -130,4 +134,13 @@ target "nodejs-example" {
     "ghcr.io/fivexl/secure-container-image-base-nodejs" = "target:nodejs-production"
   }
   output = local_output("nodejs-example")
+}
+
+# Envoy's own distroless image, not a base from this repo; the static family
+# builds it because its smoke test proxies to the Go example.
+target "static-envoy-example" {
+  inherits   = ["_common"]
+  context    = "examples/envoy_example"
+  dockerfile = "Dockerfile.envoy"
+  output     = local_output("static-envoy-example")
 }
