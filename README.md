@@ -146,6 +146,20 @@ Docker runs the entrypoint's unit tests in the build stage. Envoy is linked agai
 
 Use a shell script when it is one line that `exec`s the process. Write the entrypoint in Go once it validates input or renders config.
 
+## Agent Skill
+
+`skills/secure-container` is an [Agent Skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) that hardens a Dockerfile with these images, or writes a new one. It first inspects the app: runtime, native dependencies, subprocesses, signal handling, writable paths, ports and what the healthcheck proves. Then it proposes only the changes that apply, such as a multi-stage build, the `-rds` variant, lprobe, a Go entrypoint or an unprivileged port, and asks before it edits. The last step runs the image with the hardened flags until it is healthy, verifies the base with `cosign` and reports any check it could not run. When an app does not fit these bases, it says so and applies the hardening steps that still fit.
+
+To install it, copy the directory into your agent's skill directory. For Claude Code:
+
+```shell
+git clone --depth 1 https://github.com/fivexl/secure-container-image.git
+mkdir -p ~/.claude/skills
+cp -R secure-container-image/skills/secure-container ~/.claude/skills/
+```
+
+Then ask your agent to harden a Dockerfile.
+
 ## Deprecated Images
 
 These packages are no longer built. They stay pullable but get no fixes.
