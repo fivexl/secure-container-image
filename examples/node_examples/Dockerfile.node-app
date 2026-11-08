@@ -7,8 +7,8 @@ RUN npm ci --omit=dev
 
 # CI builds the base from this repo and substitutes it for this reference.
 # Production images should follow a floating tag or pin @sha256, see README.
-# hadolint ignore=DL3007
-FROM ghcr.io/fivexl/secure-container-image-base-nodejs:latest
+FROM ghcr.io/fivexl/secure-container-image-base-nodejs:node26-debian13
+USER 65532:65532
 COPY --from=build /deps/node_modules /app/node_modules
 COPY src/app/ /app/
 EXPOSE 8080

@@ -33,9 +33,11 @@ Every image sets `WORKDIR /app`, owned by uid 65532, and `TMPDIR=/tmp`. The Node
 
 | Image | Tags | With the AWS RDS CA bundle | With a shell, for troubleshooting |
 |---|---|---|---|
-| `secure-container-image-base` | `latest`, `debian13` | `latest-rds`, `debian13-rds` | none |
-| `secure-container-image-base-python3` | `latest`, `python3.13-debian13` | `latest-rds`, `python3.13-debian13-rds` | `latest-dev`, `python3.13-debian13-dev` |
-| `secure-container-image-base-nodejs` | `latest`, `node26-debian13` | `latest-rds`, `node26-debian13-rds` | `latest-dev`, `node26-debian13-dev` |
+| `secure-container-image-base` | `debian13` | `debian13-rds` | none |
+| `secure-container-image-base-python3` | `python3.13-debian13` | `python3.13-debian13-rds` | `python3.13-debian13-dev` |
+| `secure-container-image-base-nodejs` | `node26-debian13` | `node26-debian13-rds` | `node26-debian13-dev` |
+
+The matching `latest`, `latest-rds` and `latest-dev` aliases exist for compatibility only. Use the versioned tag, so that a move to a new Debian or runtime major is a change you make on purpose.
 
 The `-rds` variants trust the [AWS RDS global certificate bundle](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) in addition to the system CAs. It is appended to `/etc/ssl/certs/ca-certificates.crt` and also kept on its own as `/etc/ssl/certs/aws-rds.crt`. For Node.js, the `-rds` variant sets `NODE_EXTRA_CA_CERTS` to that file, because Node.js ignores the system CA file by default. Use the plain tags unless your app connects to RDS over TLS.
 
@@ -55,6 +57,10 @@ FROM ghcr.io/fivexl/secure-container-image-base:debian13@sha256:<digest>
 
 A floating base patches nothing until you rebuild and redeploy your image. Rebuild your app images on a schedule as well, daily or weekly, then test and redeploy them.
 
+### Keeping the Guide Current
+
+The [container hardening guide](https://fivexl.io/blog/container-hardening-guide/) quotes these tags, the uid and the variants. A pull request that changes any of them must update the guide within the same week. A scheduled workflow opens a review issue each quarter.
+
 ## Migrating from the Alpine-Based `secure-container-image-base`
 
 Before this change, `secure-container-image-base` was Alpine 3.18 files on `scratch`. The new image keeps the name and changes the contents:
@@ -63,14 +69,14 @@ Before this change, `secure-container-image-base` was Alpine 3.18 files on `scra
 |---|---|---|
 | User | `app`, uid 2323 | `nonroot`, uid 65532 |
 | `TMPDIR` | `/app/tmp` | `/tmp` |
-| RDS CA bundle | always included | only in `latest-rds` and `debian13-rds` |
+| RDS CA bundle | always included | only in `debian13-rds` |
 | OS files | Alpine | Debian 13 distroless |
 
 To migrate:
 
 - In Dockerfiles, replace `--chown=app:app` or `--chown=2323` with `--chown=65532:65532`, and `USER app` with `USER 65532`.
 - In deployments, set `runAsUser: 65532`, fix the ownership of persistent volumes, and mount a writable `/tmp` (for example an `emptyDir`) when the root filesystem is read-only.
-- If your app connects to RDS, switch to `latest-rds`.
+- If your app connects to RDS, switch to `debian13-rds`.
 
 To roll back, pin the last Alpine build:
 
@@ -82,16 +88,16 @@ Old `:<commit sha>` tags stay in place.
 
 ## Verify an Image
 
-CI signs each published image with keyless [cosign](https://github.com/sigstore/cosign) and attaches a signed SPDX SBOM to each platform image.
+CI signs each published image with keyless [cosign](https://github.com/sigstore/cosign) and attaches a signed SPDX SBOM to each platform image. Verify with cosign v3 or newer; v2 reports "no signatures found".
 
 ```shell
-cosign verify ghcr.io/fivexl/secure-container-image-base:latest \
+cosign verify ghcr.io/fivexl/secure-container-image-base:debian13 \
   --certificate-identity https://github.com/fivexl/secure-container-image/.github/workflows/family.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # The SBOM attestation is on the platform image, not on the multi-platform index.
 image=ghcr.io/fivexl/secure-container-image-base
-digest=$(docker buildx imagetools inspect "$image:latest" --raw \
+digest=$(docker buildx imagetools inspect "$image:debian13" --raw \
   | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')
 cosign verify-attestation --type spdxjson "$image@$digest" \
   --certificate-identity https://github.com/fivexl/secure-container-image/.github/workflows/family.yml@refs/heads/main \
@@ -101,7 +107,7 @@ cosign verify-attestation --type spdxjson "$image@$digest" \
 Each image also carries BuildKit SBOM and provenance attestations:
 
 ```shell
-docker buildx imagetools inspect ghcr.io/fivexl/secure-container-image-base:latest --format '{{json .Provenance}}'
+docker buildx imagetools inspect ghcr.io/fivexl/secure-container-image-base:debian13 --format '{{json .Provenance}}'
 ```
 
 ## Examples
