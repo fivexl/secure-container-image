@@ -9,6 +9,11 @@ on:
 
 permissions: {}
 
+# Serializes the check-then-create below so overlapping runs open one issue.
+concurrency:
+  group: guide-review
+  cancel-in-progress: false
+
 jobs:
   open-issue:
     runs-on: ubuntu-24.04
@@ -18,19 +23,20 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
-      TITLE: Review the container hardening guide
     steps:
       - name: Open review issue
         run: |
           set -euo pipefail
-          open=$(gh issue list --state open --search "in:title \"$TITLE\"" --json title \
-            --jq "map(select(.title == \"$TITLE\")) | length")
+          # The quarter in the title keeps an unfinished review from hiding the next one.
+          title="Review the container hardening guide ($(date -u +%Y)-Q$(( ($(date -u +%-m) + 2) / 3 )))"
+          open=$(gh issue list --state open --search "in:title \"$title\"" --json title \
+            --jq "map(select(.title == \"$title\")) | length")
           if [[ $open -gt 0 ]]; then
-            echo "An open issue titled \"$TITLE\" already exists; skipping"
+            echo "An open issue titled \"$title\" already exists; skipping"
             exit 0
           fi
-          gh issue create --title "$TITLE" --body-file - <<'EOF'
-          Quarterly review of the [container hardening guide](https://fivexl.io/blog/container-hardening-guide/).
+          gh issue create --title "$title" --body-file - <<'EOF'
+          Quarterly review of the [container hardening guide](https://fivexl.io/blog/container-hardening-guide/), source in [fivexl/website](https://github.com/fivexl/website/blob/main/content/blog/container-hardening-guide/index.md).
 
           - [ ] Snippet versions are current: base image tags, action SHAs, tool versions.
           - [ ] Base image changes since the last review are reflected: tags, uid, variants.

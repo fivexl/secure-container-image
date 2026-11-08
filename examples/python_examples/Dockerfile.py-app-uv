@@ -21,6 +21,7 @@ RUN uv sync --frozen --no-dev
 # CI builds the base from this repo and substitutes it for this reference.
 # Production images should follow a floating tag or pin @sha256, see README.
 FROM ghcr.io/fivexl/secure-container-image-base-python3:python3.13-debian13
+USER 65532:65532
 COPY --from=build /app/.venv /app/.venv
 COPY py_src/main.py /app/main.py
 EXPOSE 8080
