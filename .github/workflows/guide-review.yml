@@ -1,0 +1,39 @@
+# Opens a quarterly issue to review the public container hardening guide,
+# whose snippets quote this repo's tags, uid and variants.
+name: Guide review
+
+on:
+  schedule:
+    - cron: "0 6 1 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  open-issue:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TITLE: Review the container hardening guide
+    steps:
+      - name: Open review issue
+        run: |
+          set -euo pipefail
+          open=$(gh issue list --state open --search "in:title \"$TITLE\"" --json title \
+            --jq "map(select(.title == \"$TITLE\")) | length")
+          if [[ $open -gt 0 ]]; then
+            echo "An open issue titled \"$TITLE\" already exists; skipping"
+            exit 0
+          fi
+          gh issue create --title "$TITLE" --body-file - <<'EOF'
+          Quarterly review of the [container hardening guide](https://fivexl.io/blog/container-hardening-guide/).
+
+          - [ ] Snippet versions are current: base image tags, action SHAs, tool versions.
+          - [ ] Base image changes since the last review are reflected: tags, uid, variants.
+          - [ ] New AWS and Kubernetes controls worth adding are listed or added.
+          - [ ] The guide has a Changelog entry for this review, even if it says "no changes".
+          EOF

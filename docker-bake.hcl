@@ -104,14 +104,15 @@ target "base" {
 
 # Examples build FROM the published base name; contexts swap in the base built
 # by this same run, so they always test the candidate. They are never pushed.
-# The context keys carry no tag: with ":latest" in the key, bake 0.33 ignores
-# it and pulls the published image instead.
+# Each key must equal the FROM reference, tag included: only ":latest" is
+# stripped before the lookup, so a key without the tag silently pulls the
+# published image instead.
 target "static-example" {
   inherits   = ["_common"]
   context    = "examples/go_app_example"
   dockerfile = "Dockerfile.goapp"
   contexts = {
-    "ghcr.io/fivexl/secure-container-image-base" = "target:static-production"
+    "ghcr.io/fivexl/secure-container-image-base:debian13" = "target:static-production"
   }
   output = local_output("static-example")
 }
@@ -121,7 +122,7 @@ target "python3-example" {
   context    = "examples/python_examples"
   dockerfile = "Dockerfile.py-app-uv"
   contexts = {
-    "ghcr.io/fivexl/secure-container-image-base-python3" = "target:python3-production"
+    "ghcr.io/fivexl/secure-container-image-base-python3:python3.13-debian13" = "target:python3-production"
   }
   output = local_output("python3-example")
 }
@@ -131,7 +132,7 @@ target "nodejs-example" {
   context    = "examples/node_examples"
   dockerfile = "Dockerfile.node-app"
   contexts = {
-    "ghcr.io/fivexl/secure-container-image-base-nodejs" = "target:nodejs-production"
+    "ghcr.io/fivexl/secure-container-image-base-nodejs:node26-debian13" = "target:nodejs-production"
   }
   output = local_output("nodejs-example")
 }

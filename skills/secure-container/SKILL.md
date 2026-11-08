@@ -13,9 +13,9 @@ Registry: `ghcr.io/fivexl/`.
 
 | Runtime | Image | Plain tags | With AWS RDS CA bundle | With a shell, for troubleshooting |
 |---|---|---|---|---|
-| Static binary (Go `CGO_ENABLED=0`, Rust musl) | `secure-container-image-base` | `latest`, `debian13` | `latest-rds`, `debian13-rds` | none |
-| Python 3.13 | `secure-container-image-base-python3` | `latest`, `python3.13-debian13` | `latest-rds`, `python3.13-debian13-rds` | `latest-dev`, `python3.13-debian13-dev` |
-| Node.js 26 | `secure-container-image-base-nodejs` | `latest`, `node26-debian13` | `latest-rds`, `node26-debian13-rds` | `latest-dev`, `node26-debian13-dev` |
+| Static binary (Go `CGO_ENABLED=0`, Rust musl) | `secure-container-image-base` | `debian13` | `debian13-rds` | none |
+| Python 3.13 | `secure-container-image-base-python3` | `python3.13-debian13` | `python3.13-debian13-rds` | `python3.13-debian13-dev` |
+| Node.js 26 | `secure-container-image-base-nodejs` | `node26-debian13` | `node26-debian13-rds` | `node26-debian13-dev` |
 
 Facts every base shares: Google distroless Debian 13, `linux/amd64` and
 `linux/arm64`, user `nonroot` uid/gid 65532, `WORKDIR /app` owned by 65532,
